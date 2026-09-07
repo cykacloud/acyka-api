@@ -11,7 +11,8 @@ import { python } from './python';
 import { rust } from './rust';
 import { kotlin } from './kotlin';
 import { csharp } from './csharp';
+import { cpp } from './cpp';
 
 export type Emitter = (api: Api) => Record<string, string>;
 
-export const emitters: Emitter[] = [typescript, python, rust, kotlin, csharp];
+export const emitters: Emitter[] = [typescript, python, rust, kotlin, csharp, cpp];

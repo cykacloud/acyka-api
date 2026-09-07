@@ -1,0 +1,9 @@
+{
+  "name": "@acyka/cpp-sdk",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Not published to npm — this is here so the root workspace can drive its checks.",
+  "scripts": {
+    "check": "cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j4 && ctest --test-dir build --output-on-failure"
+  }
+}
