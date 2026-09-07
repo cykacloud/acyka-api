@@ -1,5 +1,7 @@
 name: probe
-on: workflow_dispatch
+on:
+  push:
+    paths: ['.github/workflows/probe.yml']
 jobs:
   hosted:
     runs-on: ubuntu-latest
