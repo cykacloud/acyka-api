@@ -4,6 +4,6 @@
   "version": "1.0.0",
   "description": "Not published to npm — this is here so the root workspace can drive its checks.",
   "scripts": {
-    "check": "test -x .venv/bin/python && .venv/bin/python -m pytest tests -q || echo 'skipped: run `python3 -m venv .venv && .venv/bin/pip install httpx pytest` in packages/python'"
+    "check": "sh -c 'PY=$(test -x .venv/bin/python && echo .venv/bin/python || echo python3); \"$PY\" -m pytest tests -q || { echo; echo \"if that was a missing pytest: python3 -m venv .venv && .venv/bin/pip install httpx pytest\" >&2; exit 1; }'"
   }
 }

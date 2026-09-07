@@ -3,15 +3,15 @@
   "private": true,
   "type": "module",
   "workspaces": [
-    "apps/*",
-    "packages/typescript"
+    "packages/*"
   ],
   "scripts": {
     "generate": "bun run tools/generate.ts",
     "check": "bun run --filter '*' check",
     "test": "bun test",
-    "docs:dev": "bun run --filter '@acyka/docs' dev",
-    "docs:build": "bun run --filter '@acyka/docs' build"
+    "docs": "bun --cwd apps/docs run dev",
+    "docs:check": "bun --cwd apps/docs run check",
+    "docs:build": "bun --cwd apps/docs run build"
   },
   "devDependencies": {
     "@types/bun": "latest",

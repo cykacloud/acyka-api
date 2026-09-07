@@ -1,0 +1,106 @@
+name: contract
+
+# The api changed shape; find out here rather than from a bug report.
+#
+# `https://api.acyka.cc/api/v1/openapi.json` is what the server is actually
+# answering today. This asks it, regenerates the six libraries and the reference
+# pages from what came back, and opens a pull request if anything moved — which
+# is the diff somebody wants to read: not "the contract changed" but the files
+# in six languages that changed with it.
+#
+# It needs no access to `cykacloud/acyka` and no token for one. The document is
+# served without a bearer token on purpose, because a third party generating a
+# client has not got one either.
+on:
+  schedule:
+    # Once a day, a little after the hour, so it is not racing every other cron
+    # on the box for the same minute.
+    - cron: '17 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  ask:
+    runs-on: [self-hosted, Linux, X64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3'
+      - run: bun install --frozen-lockfile
+
+      # Written to a temporary file and checked before it replaces anything. A
+      # 502 from the edge is valid text and `curl` without `--fail` is perfectly
+      # happy to save it, and a document replaced by an error page regenerates
+      # six libraries into nothing.
+      - name: Ask the server what shape it is in
+        run: |
+          curl -fsS --max-time 30 https://api.acyka.cc/api/v1/openapi.json > "$RUNNER_TEMP/spec.json"
+          paths=$(bun -e 'const d = await Bun.file(process.env.RUNNER_TEMP + "/spec.json").json(); console.log(Object.keys(d.paths ?? {}).length)')
+          echo "the server describes $paths paths"
+          if [ "$paths" -lt 30 ]; then
+            echo "::error::only $paths paths came back. That is not the document — refusing to overwrite openapi.json with it."
+            head -c 400 "$RUNNER_TEMP/spec.json"
+            exit 1
+          fi
+          # `to_pretty_json` on the server writes what is committed here, so a
+          # byte-for-byte replacement is the right move and a no-op when nothing
+          # changed.
+          cp "$RUNNER_TEMP/spec.json" openapi.json
+
+      - id: moved
+        name: Did anything move
+        run: |
+          bun run generate
+          if git diff --quiet; then
+            echo 'nothing changed'
+            echo 'changed=no' >> "$GITHUB_OUTPUT"
+          else
+            echo 'changed=yes' >> "$GITHUB_OUTPUT"
+            git --no-pager diff --stat | tee "$RUNNER_TEMP/stat.txt"
+          fi
+
+      # It builds before it is proposed. A contract change that does not compile
+      # is still worth a pull request — that is exactly the one somebody needs to
+      # see — so this does not gate the PR, it annotates it.
+      - id: builds
+        if: steps.moved.outputs.changed == 'yes'
+        continue-on-error: true
+        run: |
+          bun --cwd packages/typescript run check
+          bun test
+
+      - name: Propose it
+        if: steps.moved.outputs.changed == 'yes'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: contract/refresh
+          # One branch, force-pushed: the question "what does the live api look
+          # like compared to what we publish" has one current answer, and a
+          # stack of thirty stale refresh PRs is a stack nobody reads.
+          title: 'chore: the contract moved'
+          commit-message: |
+            chore: the contract moved
+
+            `openapi.json` read from the live server, and the six libraries
+            regenerated from it. Everything below the contract in this diff is
+            `bun run generate` output — the thing to review is the top of it.
+          body: |
+            The api is answering a different document than the one committed here.
+
+            `openapi.json` is what `https://api.acyka.cc/api/v1/openapi.json`
+            returned, and everything else in this diff is what
+            `bun run generate` wrote from it. The contract is the part to read;
+            the six languages are a mechanical function of it.
+
+            **TypeScript check and the reader's own tests:
+            `${{ steps.builds.outcome }}`.** A `failure` there is the interesting
+            case rather than a reason to close this — it means the change is one
+            the generator cannot absorb on its own.
+
+            Nothing here is published. `publish.yml` runs on a tag, and the six
+            versions have to be bumped together before one exists.
+          labels: contract

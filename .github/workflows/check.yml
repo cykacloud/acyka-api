@@ -1,0 +1,240 @@
+name: check
+
+# Six libraries and a site over one contract. Every one of them is built and its
+# tests run, because the thing this repository is for is agreeing with itself:
+# a change to `openapi.json` is a change to six languages at once, and the only
+# way to know it landed in all six is to compile all six.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Where these run.
+#
+# GitHub's own runners are refused on billing for this org — "recent account
+# payments have failed or your spending limit needs to be increased", which is a
+# failure no amount of correct YAML answers. The org's own runners have no
+# minutes to run out of: `acyka-b1` to `acyka-b3`, all three on one box that
+# exists for nothing else.
+#
+# `Linux, X64` alongside `self-hosted` rather than the bare label: those two are
+# applied automatically and cannot be removed, so naming them costs nothing and
+# is what stops a job landing on the wrong machine the day a fourth runner joins.
+env:
+  # every toolchain below writes into the workspace rather than into $HOME, so
+  # three runners on one box do not fight over one cache
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+  DOTNET_NOLOGO: '1'
+
+jobs:
+  # The one job that can fail for a reason none of the others can see: the
+  # generated half of six libraries disagreeing with the document it came from.
+  #
+  # `tools/generate.ts` writes a file only when its content changed, so a clean
+  # tree after a run is the whole assertion. Committing generated code is what
+  # makes this possible — a generator whose output nobody looks at is a generator
+  # whose mistakes ship, and a contract change shows up in a pull request as the
+  # six changes it actually causes.
+  contract:
+    runs-on: [self-hosted, Linux, X64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3'
+      - run: bun install --frozen-lockfile
+      - name: The six libraries still match the contract
+        run: |
+          bun run generate
+          if ! git diff --quiet; then
+            echo '::error::`bun run generate` changed files. The committed clients disagree with openapi.json — run it and commit what it writes.'
+            git --no-pager diff --stat
+            exit 1
+          fi
+      # The reader itself, and the TypeScript client's own tests. `bun test` at
+      # the root walks the workspace, and `packages/typescript` is the only
+      # member whose tests bun can run — the other five are run by their own
+      # toolchain below.
+      - run: bun test
+
+  typescript:
+    runs-on: [self-hosted, Linux, X64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3'
+      - run: bun install --frozen-lockfile
+      # `check` is `tsc --noEmit` over the source; `build` is the emit that
+      # actually ships, with declarations. They fail differently — a type that
+      # cannot be named in a `.d.ts` compiles fine under --noEmit — so both run.
+      - run: bun --cwd packages/typescript run check
+      - run: bun --cwd packages/typescript run build
+
+  python:
+    runs-on: [self-hosted, Linux, X64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      # The floor rather than the newest: the package declares
+      # `requires-python = ">=3.11"`, and a client that only works on 3.13
+      # because nobody checked is a promise the metadata is making for it.
+      - run: python -m pip install --upgrade pip
+      - run: pip install httpx pytest ruff mypy hatchling
+      - run: python -m pytest tests -q
+        working-directory: packages/python
+      - run: ruff check .
+        working-directory: packages/python
+      # The whole package is annotated and ships `py.typed`, so a caller's own
+      # type checker reads these files. Strictness that is not checked is a
+      # `# type: ignore` waiting to be added by somebody in a hurry.
+      - run: mypy src/acyka
+        working-directory: packages/python
+      # And it builds: a wheel is what actually reaches PyPI, and hatchling
+      # refuses things `pytest` never notices.
+      - run: python -m hatchling build
+        working-directory: packages/python
+
+  rust:
+    runs-on: [self-hosted, Linux, X64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      # `~/.cargo` and `target/` are on the box and stay there — see the note at
+      # the top about why this fleet is one machine. A cache action here would
+      # ship gigabytes to GitHub and pull them back to a host that already has
+      # them.
+      - run: cargo fmt --check
+        working-directory: packages/rust
+      - run: cargo clippy --all-targets -- -D warnings
+        working-directory: packages/rust
+      - run: cargo test
+        working-directory: packages/rust
+      # The crate declares `rust-version = "1.75"`. Building on stable says
+      # nothing about that, and a caller on the version we promised finds out
+      # instead of us.
+      - uses: dtolnay/rust-toolchain@1.75.0
+      - run: cargo check
+        working-directory: packages/rust
+      # Both TLS backends, because the feature flags are a promise: `native-tls`
+      # is off by default and therefore never compiled by anything above.
+      - run: cargo check --no-default-features --features native-tls
+        working-directory: packages/rust
+
+  kotlin:
+    runs-on: [self-hosted, Linux, X64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          # 17 is what the library targets and 21 is what a modern Gradle wants
+          # to run on. This is the one it *runs* on; `build.gradle.kts` sets the
+          # target, and it does so through `compilerOptions` and
+          # `options.release` rather than `jvmToolchain` — a toolchain block asks
+          # Gradle to go and find a JDK 17 that is not on the runner, and the
+          # failure reads as a Kotlin error rather than a missing download.
+          java-version: '21'
+      - run: ./gradlew build --console=plain --no-daemon
+        working-directory: packages/kotlin
+
+  csharp:
+    runs-on: [self-hosted, Linux, X64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet test --nologo -v q
+        working-directory: packages/csharp/tests/Acyka.Tests
+      # `pack` and not just `build`: the nupkg is what ships, and the checks that
+      # only run at pack time — a missing readme, a licence expression the
+      # registry rejects — are the ones a release finds out about.
+      - run: dotnet pack src/Acyka -c Release --nologo
+        working-directory: packages/csharp
+
+  cpp:
+    runs-on: [self-hosted, Linux, X64]
+    steps:
+      - uses: actions/checkout@v4
+      - name: What a header-only library still needs
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends cmake g++ libcurl4-openssl-dev
+      # Both compilers. The library is headers and templates, and the two
+      # disagree about enough of that — two-phase lookup, and which
+      # forward declaration is enough — that passing under one says little.
+      - name: gcc
+        run: |
+          cmake -S . -B build/gcc -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++
+          cmake --build build/gcc -j"$(nproc)"
+          ctest --test-dir build/gcc --output-on-failure
+        working-directory: packages/cpp
+      - name: clang
+        run: |
+          sudo apt-get install -y --no-install-recommends clang
+          cmake -S . -B build/clang -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++
+          cmake --build build/clang -j"$(nproc)"
+          ctest --test-dir build/clang --output-on-failure
+        working-directory: packages/cpp
+
+  # The site. Its own lockfile, because it is the one thing here that needs the
+  # private kit — see the note in the README about why `apps/docs` is not a
+  # member of the root workspace.
+  docs:
+    runs-on: [self-hosted, Linux, X64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3'
+      # `@cyka/ui` is `cykacloud/ui` and it is private, so the install fetches a
+      # repository. The key is written to a file rather than put in the
+      # environment: `printf` puts the trailing newline back, and OpenSSH answers
+      # a key without one with `invalid format` and nothing else — which reads
+      # exactly like a key that was never authorised.
+      - name: A key for the kit
+        env:
+          KIT_SSH_KEY: ${{ secrets.KIT_SSH_KEY }}
+        run: |
+          if [ -z "$KIT_SSH_KEY" ]; then
+            echo '::error::KIT_SSH_KEY is not set on this repository, so the site cannot be built. Add a read-only deploy key for cykacloud/ui.'
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/kit"
+          printf '%s\n' "$KIT_SSH_KEY" > "$RUNNER_TEMP/kit/key"
+          chmod 600 "$RUNNER_TEMP/kit/key"
+          # Written out rather than scanned: `ssh-keyscan` would trust whatever
+          # answered, and what this fetches is source that then gets compiled.
+          echo 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl' > "$RUNNER_TEMP/kit/known_hosts"
+          echo "GIT_SSH_COMMAND=ssh -i $RUNNER_TEMP/kit/key -o IdentitiesOnly=yes -o BatchMode=yes -o UserKnownHostsFile=$RUNNER_TEMP/kit/known_hosts" >> "$GITHUB_ENV"
+      - run: bun install --frozen-lockfile
+        working-directory: apps/docs
+      - run: bun run check
+        working-directory: apps/docs
+      - run: bun run build
+        working-directory: apps/docs
+      # The one thing about this site that is easy to break and invisible when
+      # broken: `openapi.json` is 160 KB and the reader that flattens it is not
+      # small, and one component importing either puts both into the bundle of
+      # every page. It has happened once already — the layout called `sidebar()`
+      # to draw the rail — and the site still rendered perfectly.
+      - name: The contract has not got into the browser
+        working-directory: apps/docs
+        run: |
+          js=$(find .svelte-kit/output/client -name '*.js' -printf '%s\n' | awk '{n+=$1} END {print n+0}')
+          echo "client javascript: $js bytes"
+          if [ "$js" -gt 1000000 ]; then
+            echo "::error::the client bundle is ${js} bytes. Something is importing \$contract or shiki from a component — every loader must be +page.server.ts and the reader must stay under \$lib/server."
+            find .svelte-kit/output/client -name '*.js' -printf '%s\t%p\n' | sort -rn | head -5
+            exit 1
+          fi
+          if grep -rqs 'createHighlighter\|bundledLanguages' .svelte-kit/output/client; then
+            echo '::error::shiki is in the client bundle. Colouring happens in a server loader.'
+            exit 1
+          fi

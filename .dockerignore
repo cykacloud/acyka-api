@@ -1,0 +1,31 @@
+# The build context is the repository root and most of it is not the site: five
+# of the six client libraries, their build outputs, and the toolchains that
+# produced them. Sending those is a slow build and a fat cache key on every
+# commit that touches a Rust test.
+node_modules
+**/node_modules
+.git
+.svelte-kit
+**/.svelte-kit
+build
+**/build
+dist
+**/dist
+target
+**/target
+__pycache__
+**/__pycache__
+*.egg-info
+.venv
+bin
+obj
+.gradle
+.DS_Store
+# `tools/` and `openapi.json` are copied by name, and `apps/docs` is the site.
+# The libraries are not in this image's graph at all — except the one manifest
+# the lockfile makes it name, which is copied explicitly.
+packages/python
+packages/rust
+packages/kotlin
+packages/csharp
+packages/cpp
