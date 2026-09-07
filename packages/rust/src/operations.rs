@@ -92,7 +92,7 @@ impl<'a> CharacterTitles<'a> {
     pub(crate) fn new(core: &'a Core, id: i64) -> Self {
         Self {
             core,
-            id: id,
+            id,
             lang: None,
             limit: None,
             offset: None,
@@ -175,7 +175,7 @@ impl<'a> CharacterVoices<'a> {
     pub(crate) fn new(core: &'a Core, id: i64) -> Self {
         Self {
             core,
-            id: id,
+            id,
             lang: None,
         }
     }
@@ -211,7 +211,7 @@ impl<'a> GetCharacter<'a> {
     pub(crate) fn new(core: &'a Core, id: i64) -> Self {
         Self {
             core,
-            id: id,
+            id,
             lang: None,
         }
     }
@@ -247,7 +247,7 @@ impl<'a> GetPerson<'a> {
     pub(crate) fn new(core: &'a Core, id: i64) -> Self {
         Self {
             core,
-            id: id,
+            id,
             lang: None,
         }
     }
@@ -283,7 +283,7 @@ impl<'a> GetTitle<'a> {
     pub(crate) fn new(core: &'a Core, id: i64) -> Self {
         Self {
             core,
-            id: id,
+            id,
             lang: None,
         }
     }
@@ -523,7 +523,7 @@ impl<'a> PersonCharacters<'a> {
     pub(crate) fn new(core: &'a Core, id: i64) -> Self {
         Self {
             core,
-            id: id,
+            id,
             lang: None,
             limit: None,
             offset: None,
@@ -607,7 +607,7 @@ impl<'a> PersonTitles<'a> {
     pub(crate) fn new(core: &'a Core, id: i64) -> Self {
         Self {
             core,
-            id: id,
+            id,
             lang: None,
             limit: None,
             offset: None,
@@ -727,7 +727,7 @@ impl<'a> RelatedTitles<'a> {
     pub(crate) fn new(core: &'a Core, id: i64) -> Self {
         Self {
             core,
-            id: id,
+            id,
             lang: None,
         }
     }
@@ -884,7 +884,7 @@ impl<'a> SimilarTitles<'a> {
     pub(crate) fn new(core: &'a Core, id: i64) -> Self {
         Self {
             core,
-            id: id,
+            id,
             lang: None,
         }
     }
@@ -922,7 +922,7 @@ impl<'a> TitleCharacters<'a> {
     pub(crate) fn new(core: &'a Core, id: i64) -> Self {
         Self {
             core,
-            id: id,
+            id,
             lang: None,
             limit: None,
             offset: None,
@@ -1008,7 +1008,7 @@ impl<'a> TitleEpisodes<'a> {
     pub(crate) fn new(core: &'a Core, id: i64) -> Self {
         Self {
             core,
-            id: id,
+            id,
         }
     }
 
@@ -1031,7 +1031,7 @@ impl<'a> TitleScreenshots<'a> {
     pub(crate) fn new(core: &'a Core, id: i64) -> Self {
         Self {
             core,
-            id: id,
+            id,
         }
     }
 
@@ -1055,7 +1055,7 @@ impl<'a> TitleStaff<'a> {
     pub(crate) fn new(core: &'a Core, id: i64) -> Self {
         Self {
             core,
-            id: id,
+            id,
             lang: None,
         }
     }
@@ -1093,7 +1093,7 @@ impl<'a> AddCollectionItem<'a> {
         Self {
             core,
             code: code.to_owned(),
-            shikimori_id: shikimori_id,
+            shikimori_id,
             body,
         }
     }
@@ -1300,7 +1300,7 @@ impl<'a> RateListEntry<'a> {
     pub(crate) fn new(core: &'a Core, shikimori_id: i32, body: models::ScoreBody) -> Self {
         Self {
             core,
-            shikimori_id: shikimori_id,
+            shikimori_id,
             body,
         }
     }
@@ -1326,7 +1326,7 @@ impl<'a> RemoveCollectionItem<'a> {
         Self {
             core,
             code: code.to_owned(),
-            shikimori_id: shikimori_id,
+            shikimori_id,
         }
     }
 
@@ -1349,7 +1349,7 @@ impl<'a> RemoveListEntry<'a> {
     pub(crate) fn new(core: &'a Core, shikimori_id: i32) -> Self {
         Self {
             core,
-            shikimori_id: shikimori_id,
+            shikimori_id,
         }
     }
 
@@ -1373,7 +1373,7 @@ impl<'a> SaveListEntry<'a> {
     pub(crate) fn new(core: &'a Core, shikimori_id: i32, body: models::ListBody) -> Self {
         Self {
             core,
-            shikimori_id: shikimori_id,
+            shikimori_id,
             body,
         }
     }
@@ -1397,7 +1397,7 @@ impl<'a> UnrateListEntry<'a> {
     pub(crate) fn new(core: &'a Core, shikimori_id: i32) -> Self {
         Self {
             core,
-            shikimori_id: shikimori_id,
+            shikimori_id,
         }
     }
 

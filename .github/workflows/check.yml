@@ -115,7 +115,27 @@ jobs:
       # the top about why this fleet is one machine. A cache action here would
       # ship gigabytes to GitHub and pull them back to a host that already has
       # them.
-      - run: cargo fmt --check
+      # The hand-written files, named one by one, and `rustfmt` rather than
+      # `cargo fmt`.
+      #
+      # `cargo fmt --check` over the crate fails on `operations.rs` and
+      # `namespaces.rs`, and it should: those are the emitter's output, and
+      # rustfmt would rather join `Self { core, lang: None }` onto one line than
+      # leave it as three. Two authorities on one file's formatting is the
+      # problem, and chasing rustfmt's line-joining heuristics from inside a
+      # TypeScript emitter buys a reader nothing — the emitter is already
+      # consistent. So the three generated files answer to the generator and
+      # everything a person edits answers to rustfmt. This is how prost and
+      # tonic do it too.
+      #
+      # `lib.rs` is not on the list because rustfmt follows `mod` declarations:
+      # naming it pulls the generated three back in. What is lost is the
+      # formatting of sixty-odd lines that are `mod`, `pub use` and doc comments,
+      # which is what the `check` below would fail on anyway.
+      #
+      # Named rather than globbed with an exclusion, so a new hand-written file
+      # is a line here and a new *generated* one is not silently formatted.
+      - run: rustfmt --check --edition 2021 src/core.rs src/auth.rs src/error.rs src/webhooks.rs
         working-directory: packages/rust
       - run: cargo clippy --all-targets -- -D warnings
         working-directory: packages/rust
