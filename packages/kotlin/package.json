@@ -1,0 +1,9 @@
+{
+  "name": "@acyka/kotlin-sdk",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Not published to npm — this is here so the root workspace can drive its checks.",
+  "scripts": {
+    "check": "./gradlew test --console=plain -q"
+  }
+}

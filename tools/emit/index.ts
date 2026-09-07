@@ -9,7 +9,8 @@ import type { Api } from '../spec';
 import { typescript } from './typescript';
 import { python } from './python';
 import { rust } from './rust';
+import { kotlin } from './kotlin';
 
 export type Emitter = (api: Api) => Record<string, string>;
 
-export const emitters: Emitter[] = [typescript, python, rust];
+export const emitters: Emitter[] = [typescript, python, rust, kotlin];
