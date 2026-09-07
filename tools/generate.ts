@@ -23,9 +23,12 @@ for (const emit of emitters) {
 			.text()
 			.catch(() => '');
 		// Only touch a file whose content changed, so a run that changes nothing
-		// leaves no timestamps behind for a watcher to chase.
-		if (before !== body) {
-			await Bun.write(at, body.endsWith('\n') ? body : `${body}\n`);
+		// leaves no timestamps behind for a watcher to chase. Compared against
+		// what would actually be written, trailing newline included — otherwise
+		// every run rewrites every file and the check is decoration.
+		const after = body.endsWith('\n') ? body : `${body}\n`;
+		if (before !== after) {
+			await Bun.write(at, after);
 			written += 1;
 			console.log(`  ${path}`);
 		}

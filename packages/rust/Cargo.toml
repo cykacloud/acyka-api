@@ -1,0 +1,41 @@
+[package]
+name = "acyka"
+version = "1.0.0"
+edition = "2021"
+rust-version = "1.75"
+description = "A client for the acyka API: the catalogue, profiles, lists and writing."
+license = "MIT"
+repository = "https://github.com/cykacloud/acyka-api"
+homepage = "https://dev.acyka.cc"
+documentation = "https://docs.rs/acyka"
+keywords = ["acyka", "anime", "api", "client", "oauth"]
+categories = ["api-bindings", "web-programming::http-client"]
+readme = "README.md"
+
+[dependencies]
+reqwest = { version = "0.12", default-features = false, features = ["json", "charset"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_urlencoded = "0.7"
+tokio = { version = "1", features = ["time"] }
+futures-core = "0.3"
+futures-util = "0.3"
+thiserror = "2"
+hmac = "0.12"
+sha2 = "0.10"
+hex = "0.4"
+base64 = "0.22"
+rand = "0.8"
+url = "2"
+
+[features]
+# rustls by default, because a client library that drags in openssl makes the
+# choice for whoever depends on it — and cross-compiling then stops working for
+# reasons that have nothing to do with this crate.
+default = ["rustls"]
+rustls = ["reqwest/rustls-tls"]
+native-tls = ["reqwest/native-tls"]
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time", "test-util"] }
+wiremock = "0.6"

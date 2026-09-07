@@ -263,7 +263,13 @@ export function read(document: Json): Api {
 				body: bodyRef ? { model: nameOf(bodyRef), required: !!op.requestBody.required } : undefined,
 				ok,
 				scope: op.security?.[0]?.oauth2?.[0],
-				pages: ok.ty?.k === 'page' && params.some((p) => p.name === 'offset')
+				// Both, not either: a paginator needs to ask for a window and to
+				// move it, and an operation with only one of the two would
+				// generate a loop that either never advances or cannot be sized.
+				pages:
+					ok.ty?.k === 'page' &&
+					params.some((p) => p.name === 'offset') &&
+					params.some((p) => p.name === 'limit')
 			});
 		}
 	}
