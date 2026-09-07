@@ -48,8 +48,14 @@ jobs:
           fi
           # `to_pretty_json` on the server writes what is committed here, so a
           # byte-for-byte replacement is the right move and a no-op when nothing
-          # changed.
+          # changed — with one byte of difference. `acyka-api spec` prints the
+          # document with `println!` and the route answers it without a trailing
+          # newline, so a straight copy would leave the file one byte short of
+          # what is committed, and this workflow would open the same pull request
+          # every night for ever.
           cp "$RUNNER_TEMP/spec.json" openapi.json
+          [ -n "$(tail -c1 openapi.json)" ] && printf '\n' >> openapi.json
+          true
 
       # The addresses the six carry are not in the contract and never can be:
       # `/oauth2/token` is RFC 6749's endpoint, form-encoded and shaped by a
