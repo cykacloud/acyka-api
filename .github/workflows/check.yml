@@ -141,16 +141,48 @@ jobs:
         working-directory: packages/rust
       - run: cargo test
         working-directory: packages/rust
-      # The crate declares `rust-version = "1.75"`. Building on stable says
-      # nothing about that, and a caller on the version we promised finds out
-      # instead of us.
-      - uses: dtolnay/rust-toolchain@1.75.0
-      - run: cargo check
-        working-directory: packages/rust
       # Both TLS backends, because the feature flags are a promise: `native-tls`
       # is off by default and therefore never compiled by anything above.
       - run: cargo check --no-default-features --features native-tls
         working-directory: packages/rust
+
+      # The crate declares `rust-version = "1.75"`. Building on stable says
+      # nothing about that, and a caller on the version we promised finds out
+      # instead of us.
+      #
+      # **The lockfile has to be resolved by a modern cargo, not by 1.75.** A
+      # bare `cargo +1.75 check` picks the newest version of everything, and the
+      # newest of something six levels down now needs edition 2024 — so it fails
+      # at `failed to parse manifest`, before it has read a line of ours. That is
+      # a fact about crates.io today and not about this crate.
+      #
+      # `CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS=fallback` is cargo's own
+      # answer: resolve with a cargo that can, preferring versions whose
+      # `rust-version` this crate's floor satisfies, then compile with the old
+      # rustc against that lock.
+      #
+      # **And the dev-dependencies come out first.** `wiremock`'s own manifest is
+      # edition 2024, which 1.75's cargo cannot parse — so the check failed on
+      # the test suite's dependency while saying nothing about the library, which
+      # is the only thing anybody depends on. The resolver cannot downgrade it
+      # either: a crate that declares no `rust-version` gives `fallback` nothing
+      # to prefer an older version *by*.
+      #
+      # The lockfile is generated here and not committed: a library's consumers
+      # resolve their own, so a lock in the repository would be a claim about
+      # their build that this one cannot make. Both it and the edited manifest
+      # are thrown away with the runner.
+      - uses: dtolnay/rust-toolchain@1.75.0
+      - name: The floor the crate promises
+        working-directory: packages/rust
+        env:
+          CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS: fallback
+        run: |
+          awk '/^\[dev-dependencies\]/{skip=1; next} /^\[/{skip=0} !skip' \
+            Cargo.toml > Cargo.toml.lib
+          mv Cargo.toml.lib Cargo.toml
+          cargo +stable generate-lockfile
+          cargo +1.75.0 check --locked --lib
 
   kotlin:
     runs-on: ubuntu-latest
