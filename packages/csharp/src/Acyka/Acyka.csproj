@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- net8.0 as well as net10.0: a client library that only builds on the
+         newest runtime is a client library half its users cannot take. -->
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Two doc-coverage rules are off, and for one reason.
+         CS1591 is "missing XML comment on a public member"; CS1573 is "some
+         parameters have a param tag and this one does not".
+         The comments here come from the server's own doc comments on its
+         handlers and shapes, so a field it has not documented has nothing true
+         to say about itself — and inventing a sentence to satisfy a warning is
+         how a reference fills up with "Gets or sets the title." Partial
+         coverage is honest coverage. Every other warning is still an error. -->
+    <NoWarn>$(NoWarn);CS1591;CS1573</NoWarn>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest</AnalysisLevel>
+
+    <PackageId>Acyka</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>acyka</Authors>
+    <Description>A client for the acyka API: the catalogue, profiles, lists and writing.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://dev.acyka.cc</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/cykacloud/acyka-api</RepositoryUrl>
+    <PackageTags>acyka;anime;api;client;oauth</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+</Project>

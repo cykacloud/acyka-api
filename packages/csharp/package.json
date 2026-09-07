@@ -1,0 +1,9 @@
+{
+  "name": "@acyka/csharp-sdk",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Not published to npm — this is here so the root workspace can drive its checks.",
+  "scripts": {
+    "check": "dotnet test tests/Acyka.Tests -v q --nologo"
+  }
+}
