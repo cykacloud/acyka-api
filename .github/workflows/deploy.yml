@@ -23,6 +23,17 @@ on:
   # with the commit — the box being down, a registry timing out.
   workflow_dispatch:
 
+# The repository's default token is read-only, so the push has to be granted.
+#
+# Without this the build succeeds and the *push* is refused —
+# `denied: installation not allowed to Create organization package` — which
+# reads like a registry or an org setting and is neither. `contents: read`
+# alongside it because naming any permission drops the rest to none, and the
+# checkout needs that one.
+permissions:
+  contents: read
+  packages: write
+
 env:
   IMAGE: ghcr.io/${{ github.repository }}/docs
 
