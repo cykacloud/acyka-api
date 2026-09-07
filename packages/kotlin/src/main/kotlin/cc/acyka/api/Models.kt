@@ -364,7 +364,7 @@ public data class Post(
     @SerialName("episode")
     public val episode: Int? = null,
     @SerialName("parent")
-    public val parent: JsonElement? = null,
+    public val parent: PostId? = null,
 )
 
 @Serializable
@@ -381,7 +381,7 @@ public data class PostBody(
     @SerialName("spoiler")
     public val spoiler: Boolean? = null,
     @SerialName("parent")
-    public val parent: Long? = null,
+    public val parent: PostId? = null,
 )
 
 /**

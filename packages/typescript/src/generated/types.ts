@@ -230,7 +230,7 @@ export type Post = {
 	shikimori_id?: number;
 	title?: string;
 	episode?: number;
-	parent?: unknown;
+	parent?: PostId;
 	at: string;
 };
 
@@ -241,7 +241,7 @@ export type PostBody = {
 	episode?: number;
 	/** Read and ignored. A post used to be able to hide behind one flag; `||a phrase||` in the body does that properly and this door is a contract somebody else's code already sends. Refusing the field would break a client over a word that no longer means anything, so it is accepted and dropped. */
 	spoiler?: boolean;
-	parent?: number;
+	parent?: PostId;
 };
 
 /**

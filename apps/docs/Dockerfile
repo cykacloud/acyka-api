@@ -7,20 +7,21 @@
 # whole point — a second copy here would be a reference that could disagree with
 # the clients it documents.
 FROM oven/bun:1.3-alpine AS build
-WORKDIR /app
+WORKDIR /app/apps/docs
 
 # `@cyka/ui` is `cykacloud/ui` and it is private, so the install fetches a
 # repository rather than reading a folder — which needs git and a key.
 RUN apk add --no-cache git openssh-client
 
-# the manifests first, so editing a page does not re-resolve dependencies.
-# Every workspace `bun.lock` names gets a line whether or not this image needs
-# it: bun 1.3 reads a workspace the lockfile knows about and the context has not
-# got as the lockfile having changed, and `--frozen-lockfile` then refuses the
-# whole install.
-COPY package.json bun.lock ./
-COPY apps/docs/package.json ./apps/docs/
-COPY packages/typescript/package.json ./packages/typescript/
+# This directory's own manifests, and nothing from the root.
+#
+# `apps/docs` is deliberately *not* a member of the root workspace — it is the
+# one thing here that depends on the private kit, and a workspace member's
+# dependency is everybody's `bun install`. So it has its own lockfile, and this
+# used to copy the root's: `bun install --frozen-lockfile` then found a lockfile
+# that knew nothing about any of these dependencies and refused with "lockfile
+# had changes, but lockfile is frozen".
+COPY apps/docs/package.json apps/docs/bun.lock ./
 
 # A read-only deploy key on that one repository, mounted rather than passed: a
 # `--build-arg` is in the image history and in a layer, readable by anybody who
@@ -48,35 +49,27 @@ RUN --mount=type=secret,id=kit_key \
       bun install --frozen-lockfile; \
       rm -f /tmp/kit_key'
 
-# the contract and the reader, then the site itself
-COPY openapi.json ./openapi.json
-COPY tools ./tools
-COPY apps/docs ./apps/docs
+# The contract and the reader, at the paths the two aliases expect, then the
+# site itself. `node_modules` is not overwritten: `COPY` merges, and
+# `.dockerignore` keeps it out of the context anyway.
+COPY openapi.json /app/openapi.json
+COPY tools /app/tools
+COPY apps/docs ./
 
-WORKDIR /app/apps/docs
 RUN bun run build
 
 FROM oven/bun:1.3-alpine AS runtime
-WORKDIR /app
+WORKDIR /app/apps/docs
 ENV NODE_ENV=production
 
-#
-# The workspace layout is kept exactly as it was built.
-#
-# A workspace install puts each package's dependencies under that package rather
-# than all at the root, so flattening the server bundle to `/app/build` moves it
-# out of reach of them: resolution walks up to an `/app/node_modules` that only
-# holds the shared store and finds nothing. The site's own bundle is
-# self-contained, but the shape is kept anyway — the failure it prevents shows up
-# as a 500 on one route while a healthcheck that touches nothing keeps reporting
-# the container healthy.
-#
-COPY --from=build /app/package.json ./package.json
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/apps/docs/package.json ./apps/docs/package.json
-COPY --from=build /app/apps/docs/build ./apps/docs/build
-
-WORKDIR /app/apps/docs
+# The layout is kept as it was built. `adapter-node` bundles what it can and
+# leaves the rest external, so the server still resolves out of the
+# `node_modules` beside it — flattening the two into one directory is how a
+# route comes to answer 500 while a healthcheck that touches nothing keeps
+# reporting the container healthy.
+COPY --from=build /app/apps/docs/package.json ./package.json
+COPY --from=build /app/apps/docs/node_modules ./node_modules
+COPY --from=build /app/apps/docs/build ./build
 
 EXPOSE 3000
 ENV PORT=3000

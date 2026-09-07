@@ -279,7 +279,7 @@ struct Post {
     std::optional<std::int32_t> shikimori_id;
     std::optional<std::string> title;
     std::optional<std::int32_t> episode;
-    std::optional<nlohmann::json> parent;
+    std::optional<PostId> parent;
     std::string at{};
 };
 
@@ -295,7 +295,7 @@ struct PostBody {
     /// sends. Refusing the field would break a client over a word that no longer
     /// means anything, so it is accepted and dropped.
     std::optional<bool> spoiler;
-    std::optional<std::int64_t> parent;
+    std::optional<PostId> parent;
 };
 
 /// A public profile.

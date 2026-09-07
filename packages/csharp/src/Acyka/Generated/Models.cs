@@ -241,7 +241,7 @@ public sealed record Post(
     [property: JsonPropertyName("shikimori_id")] int? ShikimoriId = null,
     [property: JsonPropertyName("title")] string? Title = null,
     [property: JsonPropertyName("episode")] int? Episode = null,
-    [property: JsonPropertyName("parent")] JsonElement? Parent = null
+    [property: JsonPropertyName("parent")] PostId? Parent = null
 );
 
 /// <param name="Spoiler">Read and ignored. A post used to be able to hide behind one flag; `||a phrase||` in the body does that properly and this door is a contract somebody else's code already sends. Refusing the field would break a client over a word that no longer means anything, so it is accepted and dropped.</param>
@@ -251,7 +251,7 @@ public sealed record PostBody(
     [property: JsonPropertyName("title")] string? Title = null,
     [property: JsonPropertyName("episode")] int? Episode = null,
     [property: JsonPropertyName("spoiler")] bool? Spoiler = null,
-    [property: JsonPropertyName("parent")] long? Parent = null
+    [property: JsonPropertyName("parent")] PostId? Parent = null
 );
 
 /// <summary>

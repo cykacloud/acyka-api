@@ -445,7 +445,7 @@ class Post:
     shikimori_id: int | None = None
     title: str | None = None
     episode: int | None = None
-    parent: Any | None = None
+    parent: PostId | None = None
 
     @classmethod
     def _parse(cls, raw: Any) -> Post:
@@ -473,7 +473,7 @@ class PostBody:
     #: sends. Refusing the field would break a client over a word that no longer
     #: means anything, so it is accepted and dropped.
     spoiler: bool | None = None
-    parent: int | None = None
+    parent: PostId | None = None
 
     @classmethod
     def _parse(cls, raw: Any) -> PostBody:

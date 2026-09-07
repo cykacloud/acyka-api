@@ -380,7 +380,7 @@ pub struct Post {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub episode: Option<i32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub parent: Option<serde_json::Value>,
+    pub parent: Option<PostId>,
     pub at: String,
 }
 
@@ -402,7 +402,7 @@ pub struct PostBody {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub spoiler: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub parent: Option<i64>,
+    pub parent: Option<PostId>,
 }
 
 impl PostBody {
@@ -439,7 +439,7 @@ impl PostBody {
         self
     }
 
-    pub fn parent(mut self, value: impl Into<i64>) -> Self {
+    pub fn parent(mut self, value: impl Into<PostId>) -> Self {
         self.parent = Some(value.into());
         self
     }

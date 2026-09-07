@@ -120,6 +120,27 @@ function bare(schema: Json): { type?: string; nullable: boolean } {
  */
 function tyOf(schema: Json | undefined, schemas: Json = {}): Ty {
 	if (!schema) return { k: 'unknown' };
+
+	// An optional field whose type is a *schema* rather than a scalar.
+	//
+	// utoipa spells `Option<i64>` as `"type": ["integer", "null"]` — which
+	// `bare` below handles — and `Option<SomeSchema>` as
+	// `oneOf: [{type: null}, {$ref: …}]`, which nothing here handled. So every
+	// nullable reference read as `unknown`, and six clients typed
+	// `Post.parent` as `any`, `unknown`, `serde_json::Value` and `JsonElement`
+	// — the id of the post it answers, handed to a caller as a blob. It went
+	// unnoticed because `unknown` compiles everywhere.
+	//
+	// One non-null branch is unwrapped and anything else is left alone: a real
+	// union of two shapes is a thing this reader does not model, and guessing
+	// at it would be worse than saying so.
+	for (const key of ['oneOf', 'anyOf'] as const) {
+		const branches: Json[] | undefined = schema[key];
+		if (!Array.isArray(branches)) continue;
+		const real = branches.filter((b) => b?.type !== 'null');
+		if (real.length === 1) return tyOf(real[0], schemas);
+	}
+
 	if (schema.$ref) {
 		const name = nameOf(schema.$ref);
 		if (!name.startsWith(PAGE)) return { k: 'ref', name };

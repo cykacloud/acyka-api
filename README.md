@@ -39,6 +39,13 @@ packages/cpp          acyka, header-only
 that are a mechanical function of the contract, and the parts a human writing
 them by hand gets subtly wrong in six different ways.
 
+One thing the reader will not guess at: a schema that is a genuine union of two
+shapes. `oneOf` with a single non-null branch is unwrapped — that is how utoipa
+spells an optional field whose type is a schema, and reading only the scalar
+form (`"type": ["integer", "null"]`) had every nullable reference come out as
+`unknown`, `Any`, `serde_json::Value` and `JsonElement` in the six clients. A
+real union stays `unknown`, because guessing at it would be worse than saying so.
+
 **Written by hand, once per language:** the transport, and everything that makes
 a client pleasant rather than merely correct —
 

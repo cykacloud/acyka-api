@@ -160,6 +160,14 @@ jobs:
       #
       # One service named, and that matters: the rest of `compose.yaml` belongs
       # to `cykacloud/acyka` and is mid-flight as far as this run knows.
+      #
+      # `--profile docs` because that is how the service is declared over there.
+      # It was not, and that repository's own deploy ends with a bare
+      # `docker compose up -d --no-build` — which acts on every service in the
+      # file, so the first deploy after `docs` was added tried to pull an image
+      # this repository had not built yet and failed a deploy that had nothing
+      # to do with documentation. A profile takes it out of "every service"
+      # while leaving it a normal member of the stack.
       - name: Swap it over
         env:
           HOST: ${{ secrets.SSH_HOST }}
@@ -167,8 +175,8 @@ jobs:
         run: |
           ssh -o ServerAliveInterval=10 "$USER@$HOST" "cd /opt/acyka \
             && export DOCS_IMAGE='${{ env.IMAGE }}:${{ github.sha }}' \
-            && docker compose pull docs \
-            && docker compose up -d --no-build docs"
+            && docker compose --profile docs pull docs \
+            && docker compose --profile docs up -d --no-build docs"
 
       - name: And forget the registry again
         if: always()

@@ -46,6 +46,12 @@ public sealed class CatalogueApi
     /// The site's `?mine=1` is not offered. It narrows to the reader's own shelf,
     /// which is a second way of asking a question `/v1/lists` already answers, and
     /// a filter that means nothing at all for an application speaking for itself.
+    /// The `viewer` argument below is therefore `None` — it exists to answer that
+    /// filter and there is nothing else it decides.
+    /// 
+    /// 18+ is the caller's own switch, like every other read here: a calendar is a
+    /// shelf with dates on it, and it must not be the one page that names a title
+    /// the reader asked not to see.
     /// </summary>
     /// <remarks><c>GET /api/v1/calendar</c>, needs <c>catalog:read</c></remarks>
     public Task<Page<Airing>> CalendarAsync(string? lang = null, CancellationToken cancellationToken = default)

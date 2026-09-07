@@ -26,7 +26,7 @@
           "catalogue"
         ],
         "summary": "What comes out this week, and what just did.",
-        "description": "A projection rather than a schedule: an ongoing series has no per-episode\ntimetable anywhere upstream, so the day of episode *n* is worked out from the\nstart date and a seven-day cadence. Irregular shows are wrong by a few days\nand this says nothing about it, because a calendar that hid everything it was\nnot certain of would be an empty page most weeks. `out` is the part that is\nnot a projection — an episode a dub is already held for is playable now,\nwhatever the arithmetic says.\n\nThe site's `?mine=1` is not offered. It narrows to the reader's own shelf,\nwhich is a second way of asking a question `/v1/lists` already answers, and a\nfilter that means nothing at all for an application speaking for itself.",
+        "description": "A projection rather than a schedule: an ongoing series has no per-episode\ntimetable anywhere upstream, so the day of episode *n* is worked out from the\nstart date and a seven-day cadence. Irregular shows are wrong by a few days\nand this says nothing about it, because a calendar that hid everything it was\nnot certain of would be an empty page most weeks. `out` is the part that is\nnot a projection — an episode a dub is already held for is playable now,\nwhatever the arithmetic says.\n\nThe site's `?mine=1` is not offered. It narrows to the reader's own shelf,\nwhich is a second way of asking a question `/v1/lists` already answers, and a\nfilter that means nothing at all for an application speaking for itself. The\n`viewer` argument below is therefore `None` — it exists to answer that\nfilter and there is nothing else it decides.\n\n18+ is the caller's own switch, like every other read here: a calendar is a\nshelf with dates on it, and it must not be the one page that names a title\nthe reader asked not to see.",
         "operationId": "calendar",
         "parameters": [
           {
@@ -5106,11 +5106,15 @@
             "description": "Read and ignored.\n\nA post used to be able to hide behind one flag; `||a phrase||` in the\nbody does that properly and this door is a contract somebody else's code\nalready sends. Refusing the field would break a client over a word that\nno longer means anything, so it is accepted and dropped."
           },
           "parent": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int64"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PostId",
+                "description": "`PostId` and not `i64`, which is the whole of the bug this fixes.\n\n`Post.id` is answered as a string — deliberately, because JSON has one\nnumber type and it is a double. Reading it back as a number here meant a\nclient could not do the one thing an id is for: take it off an answer and\nsend it with the next request. Every reply to a reply was a 400."
+              }
+            ]
           }
         }
       },
