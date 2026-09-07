@@ -506,8 +506,8 @@
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "the shelf that was made",
+          "201": {
+            "description": "the shelf that was made, with its address in `Location`",
             "content": {
               "application/json": {
                 "schema": {
@@ -765,7 +765,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/CollectionItem"
                 }
               }
             }
@@ -846,15 +846,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "taken off the shelf",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
+          "204": {
+            "description": "taken off the shelf"
           },
           "401": {
             "description": "no token, or a token that is not live",
@@ -1003,15 +996,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "now following",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
+          "204": {
+            "description": "now following"
           },
           "401": {
             "description": "no token, or a token that is not live",
@@ -1079,15 +1065,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "no longer following",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
+          "204": {
+            "description": "no longer following"
           },
           "401": {
             "description": "no token, or a token that is not live",
@@ -1321,7 +1300,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/ListEntry"
                 }
               }
             }
@@ -1393,15 +1372,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "taken off",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
+          "204": {
+            "description": "taken off"
           },
           "401": {
             "description": "no token, or a token that is not live",
@@ -1489,7 +1461,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/ListEntry"
                 }
               }
             }
@@ -1561,15 +1533,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "the score taken off; the row stays",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
+          "204": {
+            "description": "the score taken off; the row stays"
           },
           "401": {
             "description": "no token, or a token that is not live",
@@ -2138,12 +2103,12 @@
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "the post that was written",
+          "201": {
+            "description": "the post that was written, with its address in `Location`",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/Post"
                 }
               }
             }
