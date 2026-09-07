@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from .operations import Account, Catalogue, People, Library, Social
-from .aoperations import AsyncAccount, AsyncCatalogue, AsyncPeople, AsyncLibrary, AsyncSocial
+from .aoperations import AsyncAccount, AsyncCatalogue, AsyncLibrary, AsyncPeople, AsyncSocial
+from .operations import Account, Catalogue, Library, People, Social
 
 
 class Namespaces:

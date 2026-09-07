@@ -56,19 +56,57 @@ if(ACYKA_BUILD_TESTS)
     endforeach()
 endif()
 
-include(GNUInstallDirs)
-include(CMakePackageConfigHelpers)
+# Installing, which is the second way to use this and was broken in two ways at
+# once.
+#
+# **A fetched dependency cannot be exported.** `install(EXPORT)` refused the
+# whole configure with "target acyka requires target nlohmann_json that is not
+# in any export set" — because when `find_package` above comes up empty,
+# `FetchContent` builds nlohmann/json inside *this* build tree, and a target
+# that only exists here cannot be named in a package somebody else consumes.
+# So installation is offered only when the dependencies came from outside; a
+# `FetchContent` build is for using the library here, which is the common case
+# and needs no install at all.
+#
+# **And there was no config file.** Only the *version* file was installed, so
+# `find_package(acyka)` would have failed on a correct install for want of
+# `acyka-config.cmake` — and nothing noticed, because nothing had ever consumed
+# an install. `check.yml` does now: it installs into a temporary prefix and
+# configures a three-line project against it.
+option(ACYKA_INSTALL "Generate the install and export rules"
+       "${PROJECT_IS_TOP_LEVEL}")
 
-install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-install(TARGETS acyka EXPORT acyka-targets)
-install(EXPORT acyka-targets
-        FILE acyka-targets.cmake
-        NAMESPACE acyka::
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/acyka)
+if(ACYKA_INSTALL AND NOT nlohmann_json_FOUND)
+    message(STATUS
+        "acyka: nlohmann/json was fetched rather than found, so no install rules "
+        "are generated. Install nlohmann/json first if you want to install acyka.")
+elseif(ACYKA_INSTALL)
+    include(GNUInstallDirs)
+    include(CMakePackageConfigHelpers)
 
-write_basic_package_version_file(
-    "${CMAKE_CURRENT_BINARY_DIR}/acyka-config-version.cmake"
-    COMPATIBILITY SameMajorVersion
-    ARCH_INDEPENDENT)
-install(FILES "${CMAKE_CURRENT_BINARY_DIR}/acyka-config-version.cmake"
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/acyka)
+    install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+    install(TARGETS acyka EXPORT acyka-targets)
+    install(EXPORT acyka-targets
+            FILE acyka-targets.cmake
+            NAMESPACE acyka::
+            DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/acyka)
+
+    # The consumer has to find the same two libraries this links, and
+    # `find_dependency` is what reports a missing one as a missing dependency
+    # rather than as an unresolved symbol. CURL only when it was linked —
+    # `ACYKA_WITH_CURL=OFF` ships the transport seam and no transport.
+    configure_package_config_file(
+        cmake/acyka-config.cmake.in
+        "${CMAKE_CURRENT_BINARY_DIR}/acyka-config.cmake"
+        INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/acyka)
+
+    write_basic_package_version_file(
+        "${CMAKE_CURRENT_BINARY_DIR}/acyka-config-version.cmake"
+        COMPATIBILITY SameMajorVersion
+        ARCH_INDEPENDENT)
+
+    install(FILES
+                "${CMAKE_CURRENT_BINARY_DIR}/acyka-config.cmake"
+                "${CMAKE_CURRENT_BINARY_DIR}/acyka-config-version.cmake"
+            DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/acyka)
+endif()

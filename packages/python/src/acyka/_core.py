@@ -19,8 +19,9 @@ from __future__ import annotations
 
 import asyncio
 import time
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from typing import Any, Callable, Mapping
+from typing import Any
 
 import httpx
 
@@ -106,7 +107,12 @@ def _wait_for(response: httpx.Response, attempt: int, pace: Pace) -> float:
 class Core:
     """The synchronous transport."""
 
-    def __init__(self, auth: Auth, options: Options | None = None, http: httpx.Client | None = None):
+    def __init__(
+        self,
+        auth: Auth,
+        options: Options | None = None,
+        http: httpx.Client | None = None,
+    ):
         self._auth = auth
         self._o = options or Options()
         self._own = http is None
@@ -172,7 +178,9 @@ class Core:
                     raise Unauthorized(401, said, where) from None
                 continue
 
-            if (response.status_code == 429 or response.status_code >= 500) and attempt < self._o.retries:
+            too_often = response.status_code == 429
+            theirs = response.status_code >= 500
+            if (too_often or theirs) and attempt < self._o.retries:
                 wait = _wait_for(response, attempt, pace)
                 if wait <= self._o.max_wait:
                     time.sleep(wait)
@@ -266,7 +274,9 @@ class AsyncCore:
                     raise Unauthorized(401, said, where) from None
                 continue
 
-            if (response.status_code == 429 or response.status_code >= 500) and attempt < self._o.retries:
+            too_often = response.status_code == 429
+            theirs = response.status_code >= 500
+            if (too_often or theirs) and attempt < self._o.retries:
                 wait = _wait_for(response, attempt, pace)
                 if wait <= self._o.max_wait:
                     await asyncio.sleep(wait)

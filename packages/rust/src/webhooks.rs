@@ -99,7 +99,9 @@ pub fn verify_at<T: serde::de::DeserializeOwned>(
     tolerance: Option<u64>,
     seconds: u64,
 ) -> Result<Delivery<T>, BadSignature> {
-    let header = signature.filter(|s| !s.is_empty()).ok_or(BadSignature::Missing)?;
+    let header = signature
+        .filter(|s| !s.is_empty())
+        .ok_or(BadSignature::Missing)?;
     let (at, said) = parts(header).ok_or(BadSignature::Shape)?;
 
     let tolerance = tolerance.unwrap_or(300);
@@ -116,7 +118,8 @@ pub fn verify_at<T: serde::de::DeserializeOwned>(
     mac.update(at.to_string().as_bytes());
     mac.update(b".");
     mac.update(body);
-    mac.verify_slice(&expected).map_err(|_| BadSignature::Mismatch)?;
+    mac.verify_slice(&expected)
+        .map_err(|_| BadSignature::Mismatch)?;
 
     serde_json::from_slice(body).map_err(BadSignature::Malformed)
 }
@@ -137,7 +140,10 @@ mod tests {
         format!("t={at},v1={}", hex::encode(mac.finalize().into_bytes()))
     }
 
-    fn check(body: &[u8], header: Option<&str>) -> Result<Delivery<serde_json::Value>, BadSignature> {
+    fn check(
+        body: &[u8],
+        header: Option<&str>,
+    ) -> Result<Delivery<serde_json::Value>, BadSignature> {
         verify_at(body, header, SECRET, None, NOW)
     }
 
@@ -161,7 +167,10 @@ mod tests {
     #[test]
     fn a_signature_made_with_another_secret() {
         let header = sign(BODY, NOW, "acyw_someone_elses");
-        assert!(matches!(check(BODY, Some(&header)), Err(BadSignature::Mismatch)));
+        assert!(matches!(
+            check(BODY, Some(&header)),
+            Err(BadSignature::Mismatch)
+        ));
     }
 
     /// The whole reason the timestamp is inside the signed string: signing the
@@ -178,7 +187,10 @@ mod tests {
     #[test]
     fn a_delivery_from_the_future_which_is_a_clock_somebody_chose() {
         let header = sign(BODY, NOW + 3600, SECRET);
-        assert!(matches!(check(BODY, Some(&header)), Err(BadSignature::Stale { .. })));
+        assert!(matches!(
+            check(BODY, Some(&header)),
+            Err(BadSignature::Stale { .. })
+        ));
     }
 
     #[test]
@@ -201,7 +213,10 @@ mod tests {
     #[test]
     fn a_signature_of_the_right_length_that_is_wrong() {
         let header = format!("t={NOW},v1={}", "0".repeat(64));
-        assert!(matches!(check(BODY, Some(&header)), Err(BadSignature::Mismatch)));
+        assert!(matches!(
+            check(BODY, Some(&header)),
+            Err(BadSignature::Mismatch)
+        ));
     }
 
     #[test]

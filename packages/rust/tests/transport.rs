@@ -73,7 +73,13 @@ async fn a_parameter_that_was_not_asked_for_is_not_sent() {
         .await;
 
     let acyka = against(&server, 0).await;
-    acyka.catalogue().list_titles().offset(0).send().await.expect("a page");
+    acyka
+        .catalogue()
+        .list_titles()
+        .offset(0)
+        .send()
+        .await
+        .expect("a page");
 
     let asked = &server.received_requests().await.expect("requests")[0];
     let query = asked.url.query().unwrap_or_default();
@@ -93,7 +99,12 @@ async fn a_204_answers_nothing_rather_than_a_parse_error() {
         .await;
 
     let acyka = against(&server, 0).await;
-    acyka.library().remove_list_entry(21).send().await.expect("no body");
+    acyka
+        .library()
+        .remove_list_entry(21)
+        .send()
+        .await
+        .expect("no body");
 }
 
 #[tokio::test]
@@ -108,7 +119,12 @@ async fn a_refusal_becomes_the_variant_that_says_what_to_do() {
         .await;
 
     let acyka = against(&server, 0).await;
-    let err = acyka.library().list_my_list().send().await.expect_err("refused");
+    let err = acyka
+        .library()
+        .list_my_list()
+        .send()
+        .await
+        .expect_err("refused");
 
     assert!(matches!(err, Error::Forbidden(_)));
     assert_eq!(err.code(), "errors.oauthInsufficientScope");
@@ -131,7 +147,12 @@ async fn an_answer_that_is_not_json_still_becomes_the_right_variant() {
         .await;
 
     let acyka = against(&server, 0).await;
-    let err = acyka.catalogue().list_genres().send().await.expect_err("refused");
+    let err = acyka
+        .catalogue()
+        .list_genres()
+        .send()
+        .await
+        .expect_err("refused");
     assert!(matches!(err, Error::Server { status: 502, .. }));
     assert!(err.retryable());
 }
@@ -161,7 +182,12 @@ async fn a_429_waits_as_long_as_retry_after_said_and_then_succeeds() {
 
     let acyka = against(&server, 3).await;
     let started = Instant::now();
-    let genres = acyka.catalogue().list_genres().send().await.expect("a list");
+    let genres = acyka
+        .catalogue()
+        .list_genres()
+        .send()
+        .await
+        .expect("a list");
     let took = started.elapsed();
 
     assert_eq!(genres.items, vec!["Drama".to_owned()]);
@@ -189,7 +215,12 @@ async fn a_wait_past_the_ceiling_is_raised_rather_than_slept_through() {
         .await;
 
     let acyka = against(&server, 3).await;
-    let err = acyka.catalogue().list_genres().send().await.expect_err("refused");
+    let err = acyka
+        .catalogue()
+        .list_genres()
+        .send()
+        .await
+        .expect_err("refused");
     match err {
         Error::RateLimited { retry_after, .. } => assert_eq!(retry_after, 60),
         other => panic!("{other:?}"),
@@ -212,10 +243,18 @@ async fn the_pace_the_server_sets_is_readable_afterwards() {
         .await;
 
     let acyka = against(&server, 0).await;
-    acyka.catalogue().list_genres().send().await.expect("a list");
+    acyka
+        .catalogue()
+        .list_genres()
+        .send()
+        .await
+        .expect("a list");
 
     let pace = acyka.pace();
-    assert_eq!((pace.limit, pace.remaining, pace.reset), (Some(60), Some(58), Some(31)));
+    assert_eq!(
+        (pace.limit, pace.remaining, pace.reset),
+        (Some(60), Some(58), Some(31))
+    );
 }
 
 /// An auth that hands out a new token each time it is forgotten.
@@ -246,7 +285,8 @@ async fn a_token_that_expired_mid_flight_is_refreshed_once_and_retried_once() {
         .and(path("/api/v1/me"))
         .respond_with(move |_: &wiremock::Request| {
             if count.fetch_add(1, Ordering::SeqCst) == 0 {
-                ResponseTemplate::new(401).set_body_json(json!({ "message": "errors.unauthorized" }))
+                ResponseTemplate::new(401)
+                    .set_body_json(json!({ "message": "errors.unauthorized" }))
             } else {
                 ResponseTemplate::new(200).set_body_json(json!({ "id": "1" }))
             }
@@ -254,7 +294,9 @@ async fn a_token_that_expired_mid_flight_is_refreshed_once_and_retried_once() {
         .mount(&server)
         .await;
 
-    let auth = Arc::new(Renewing { n: AtomicUsize::new(0) });
+    let auth = Arc::new(Renewing {
+        n: AtomicUsize::new(0),
+    });
     let acyka = Acyka::new(
         auth.clone(),
         Options {
@@ -271,7 +313,13 @@ async fn a_token_that_expired_mid_flight_is_refreshed_once_and_retried_once() {
     let asked = server.received_requests().await.expect("requests");
     let tokens: Vec<_> = asked
         .iter()
-        .map(|r| r.headers.get("authorization").expect("header").to_str().expect("ascii"))
+        .map(|r| {
+            r.headers
+                .get("authorization")
+                .expect("header")
+                .to_str()
+                .expect("ascii")
+        })
         .collect();
     assert_eq!(tokens, vec!["Bearer acya_0", "Bearer acya_1"]);
 }
@@ -283,12 +331,16 @@ async fn and_a_second_401_is_raised_rather_than_refreshed_again() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))
         .and(path("/api/v1/me"))
-        .respond_with(ResponseTemplate::new(401).set_body_json(json!({ "message": "errors.unauthorized" })))
+        .respond_with(
+            ResponseTemplate::new(401).set_body_json(json!({ "message": "errors.unauthorized" })),
+        )
         .expect(2)
         .mount(&server)
         .await;
 
-    let auth = Arc::new(Renewing { n: AtomicUsize::new(0) });
+    let auth = Arc::new(Renewing {
+        n: AtomicUsize::new(0),
+    });
     let acyka = Acyka::new(
         auth,
         Options {

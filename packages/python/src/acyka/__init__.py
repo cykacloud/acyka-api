@@ -26,7 +26,10 @@ Full documentation, with a playground: https://dev.acyka.cc
 
 from __future__ import annotations
 
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
+
+import httpx
 
 from ._core import AsyncCore, Core, Options, Pace
 from .auth import (
@@ -67,9 +70,21 @@ __version__ = "1.0.0"
 class Acyka(Namespaces):
     """The synchronous client."""
 
-    def __init__(self, auth: Auth, options: Options | None = None) -> None:
+    def __init__(
+        self,
+        auth: Auth,
+        options: Options | None = None,
+        http: httpx.Client | None = None,
+    ) -> None:
+        """
+        ``http`` is the seam. `Core` has always taken one and the client did
+        not pass it on, which left a caller with no way to put a fake
+        underneath — and ``httpx.MockTransport`` is how an httpx-based library
+        is tested. A library that hides its own transport makes its users write
+        an integration test for something a unit test should cover.
+        """
         self.auth = auth
-        self.core = Core(auth, options)
+        self.core = Core(auth, options, http)
         super().__init__(self.core)
 
     @classmethod
@@ -81,7 +96,7 @@ class Acyka(Namespaces):
         scopes: Iterable[str] = ("catalog:read",),
         options: Options | None = None,
         endpoints: Endpoints = ACYKA,
-    ) -> "Acyka":
+    ) -> Acyka:
         """An application acting for itself — a bot, a cron, anything with no
         person in front of it. Mints on demand and stores nothing.
 
@@ -101,7 +116,7 @@ class Acyka(Namespaces):
         keep: Keeper | None = None,
         options: Options | None = None,
         endpoints: Endpoints = ACYKA,
-    ) -> "Acyka":
+    ) -> Acyka:
         """A token that acts for a person, kept alive by its refresh token.
 
         ``keep`` is told every time the set is replaced, and storing what it is
@@ -112,14 +127,14 @@ class Acyka(Namespaces):
         return cls(UserToken(client_id, tokens, client_secret, keep, endpoints), options)
 
     @classmethod
-    def token(cls, access_token: str, options: Options | None = None) -> "Acyka":
+    def token(cls, access_token: str, options: Options | None = None) -> Acyka:
         """A token somebody else obtained. No refresh."""
         return cls(BearerToken(access_token), options)
 
     def close(self) -> None:
         self.core.close()
 
-    def __enter__(self) -> "Acyka":
+    def __enter__(self) -> Acyka:
         return self
 
     def __exit__(self, *_: Any) -> None:
@@ -129,9 +144,21 @@ class Acyka(Namespaces):
 class AsyncAcyka(AsyncNamespaces):
     """The same client, awaited."""
 
-    def __init__(self, auth: Auth, options: Options | None = None) -> None:
+    def __init__(
+        self,
+        auth: Auth,
+        options: Options | None = None,
+        http: httpx.AsyncClient | None = None,
+    ) -> None:
+        """
+        ``http`` is the seam. `Core` has always taken one and the client did
+        not pass it on, which left a caller with no way to put a fake
+        underneath — and ``httpx.MockTransport`` is how an httpx-based library
+        is tested. A library that hides its own transport makes its users write
+        an integration test for something a unit test should cover.
+        """
         self.auth = auth
-        self.core = AsyncCore(auth, options)
+        self.core = AsyncCore(auth, options, http)
         super().__init__(self.core)
 
     @classmethod
@@ -143,7 +170,7 @@ class AsyncAcyka(AsyncNamespaces):
         scopes: Iterable[str] = ("catalog:read",),
         options: Options | None = None,
         endpoints: Endpoints = ACYKA,
-    ) -> "AsyncAcyka":
+    ) -> AsyncAcyka:
         return cls(AppOnly(client_id, client_secret, scopes, endpoints), options)
 
     @classmethod
@@ -156,17 +183,17 @@ class AsyncAcyka(AsyncNamespaces):
         keep: Keeper | None = None,
         options: Options | None = None,
         endpoints: Endpoints = ACYKA,
-    ) -> "AsyncAcyka":
+    ) -> AsyncAcyka:
         return cls(UserToken(client_id, tokens, client_secret, keep, endpoints), options)
 
     @classmethod
-    def token(cls, access_token: str, options: Options | None = None) -> "AsyncAcyka":
+    def token(cls, access_token: str, options: Options | None = None) -> AsyncAcyka:
         return cls(BearerToken(access_token), options)
 
     async def aclose(self) -> None:
         await self.core.aclose()
 
-    async def __aenter__(self) -> "AsyncAcyka":
+    async def __aenter__(self) -> AsyncAcyka:
         return self
 
     async def __aexit__(self, *_: Any) -> None:

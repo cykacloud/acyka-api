@@ -200,7 +200,9 @@ impl Core {
                 reset: number(response.headers(), "x-ratelimit-reset"),
             };
             *self.last.lock().expect("pace") = pace;
-            let retry_after = number(response.headers(), "retry-after").unwrap_or(0).max(0) as u64;
+            let retry_after = number(response.headers(), "retry-after")
+                .unwrap_or(0)
+                .max(0) as u64;
 
             if status.is_success() {
                 return response.text().await.map_err(Error::Unreachable);
@@ -223,7 +225,8 @@ impl Core {
                 return Err(Error::Unauthorized(refusal));
             }
 
-            let worth_retrying = status == StatusCode::TOO_MANY_REQUESTS || status.is_server_error();
+            let worth_retrying =
+                status == StatusCode::TOO_MANY_REQUESTS || status.is_server_error();
             if worth_retrying && attempt < self.options.retries {
                 let wait = if status == StatusCode::TOO_MANY_REQUESTS {
                     // The server's own number rather than a guess: too little

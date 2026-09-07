@@ -25,7 +25,7 @@ class Page(Generic[T]):
     total: int | None = None
 
     @classmethod
-    def _parse(cls, raw: Any, row: Any) -> "Page[Any]":
+    def _parse(cls, raw: Any, row: Any) -> Page[Any]:
         return cls(items=[row(x) for x in raw.get("items", [])], total=raw.get("total"))
 
     def __iter__(self):
@@ -45,9 +45,11 @@ class Airing:
 
     id: int
     title: str
-    #: which episode this is, projected: an ongoing series airs weekly, so episode *n* lands seven times *n − 1* days after the first
+    #: which episode this is, projected: an ongoing series airs weekly, so episode
+    #: *n* lands seven times *n − 1* days after the first
     episode: int
-    #: `YYYY-MM-DD`, UTC. A date and not a timestamp: nothing here knows the hour an episode lands, and inventing one would be a lie with a clock on it.
+    #: `YYYY-MM-DD`, UTC. A date and not a timestamp: nothing here knows the hour
+    #: an episode lands, and inventing one would be a lie with a clock on it.
     on: str
     #: whether a dub for it is already playable here, or it is still projected
     out: bool
@@ -55,7 +57,7 @@ class Airing:
     poster: str | None = None
 
     @classmethod
-    def _parse(cls, raw: Any) -> "Airing":
+    def _parse(cls, raw: Any) -> Airing:
         return cls(
             id=raw["id"],
             title=raw["title"],
@@ -80,11 +82,12 @@ class Appearance:
     title_orig: str | None = None
     poster: str | None = None
     year: int | None = None
-    #: The one number a reader sees: what the people here think of it and what the outside number said, weighed against each other.
+    #: The one number a reader sees: what the people here think of it and what the
+    #: outside number said, weighed against each other.
     score: float | None = None
 
     @classmethod
-    def _parse(cls, raw: Any) -> "Appearance":
+    def _parse(cls, raw: Any) -> Appearance:
         return cls(
             id=raw["id"],
             title=raw["title"],
@@ -110,7 +113,7 @@ class Character:
     poster: str | None = None
 
     @classmethod
-    def _parse(cls, raw: Any) -> "Character":
+    def _parse(cls, raw: Any) -> Character:
         return cls(
             id=raw["id"],
             name=raw["name"],
@@ -128,7 +131,7 @@ class CharacterCard:
     poster: str | None = None
 
     @classmethod
-    def _parse(cls, raw: Any) -> "CharacterCard":
+    def _parse(cls, raw: Any) -> CharacterCard:
         return cls(
             id=raw["id"],
             name=raw["name"],
@@ -160,7 +163,7 @@ class Collection:
     owner_avatar: str | None = None
 
     @classmethod
-    def _parse(cls, raw: Any) -> "Collection":
+    def _parse(cls, raw: Any) -> Collection:
         return cls(
             code=raw["code"],
             name=raw["name"],
@@ -190,7 +193,7 @@ class CollectionBody:
     shared: bool | None = None
 
     @classmethod
-    def _parse(cls, raw: Any) -> "CollectionBody":
+    def _parse(cls, raw: Any) -> CollectionBody:
         return cls(
             name=raw["name"],
             about=raw.get("about"),
@@ -210,7 +213,7 @@ class CollectionItem:
     added_by: str | None = None
 
     @classmethod
-    def _parse(cls, raw: Any) -> "CollectionItem":
+    def _parse(cls, raw: Any) -> CollectionItem:
         return cls(
             shikimori_id=raw["shikimori_id"],
             title=raw["title"],
@@ -226,7 +229,7 @@ class EntryBody:
     poster: str | None = None
 
     @classmethod
-    def _parse(cls, raw: Any) -> "EntryBody":
+    def _parse(cls, raw: Any) -> EntryBody:
         return cls(
             title=raw["title"],
             poster=raw.get("poster"),
@@ -241,7 +244,7 @@ class Episode:
     shots: list[str]
 
     @classmethod
-    def _parse(cls, raw: Any) -> "Episode":
+    def _parse(cls, raw: Any) -> Episode:
         return cls(
             episode=raw["episode"],
             shots=raw["shots"],
@@ -256,7 +259,7 @@ class ListBody:
     episode: int | None = None
 
     @classmethod
-    def _parse(cls, raw: Any) -> "ListBody":
+    def _parse(cls, raw: Any) -> ListBody:
         return cls(
             title=raw["title"],
             poster=raw.get("poster"),
@@ -280,16 +283,23 @@ class ListEntry:
     status: str
     #: how many they have watched
     episode: int
-    #: RFC 3339, and a string rather than a timestamp type for a reason that is about having one shape: this row comes from two places, and the site's own reader already formats it. A parse on this side to fit a stricter type would need something to do when it failed, and every honest answer to that is a lie about when somebody watched something.
+    #: RFC 3339, and a string rather than a timestamp type for a reason that is
+    #: about having one shape: this row comes from two places, and the site's own
+    #: reader already formats it. A parse on this side to fit a stricter type would
+    #: need something to do when it failed, and every honest answer to that is a
+    #: lie about when somebody watched something.
     at: str
     poster: str | None = None
-    #: How many the catalogue holds, so a counter knows where the series stops. Absent where the catalogue does not carry it or does not know — an announcement, and a good half of what is airing — and absent means "no ceiling" rather than "none".
+    #: How many the catalogue holds, so a counter knows where the series stops.
+    #: Absent where the catalogue does not carry it or does not know — an
+    #: announcement, and a good half of what is airing — and absent means "no
+    #: ceiling" rather than "none".
     episodes: int | None = None
     #: what they thought of it; null for a title they have not judged
     score: int | None = None
 
     @classmethod
-    def _parse(cls, raw: Any) -> "ListEntry":
+    def _parse(cls, raw: Any) -> ListEntry:
         return cls(
             shikimori_id=raw["shikimori_id"],
             title=raw["title"],
@@ -312,7 +322,11 @@ class Me:
     this one is ours to grow.
     """
 
-    #: A string, and never a number. It is an `id_token`'s `sub` on the other door and a JSON number loses precision in a language that has only doubles — which is most of them, including the one most of these clients are written in.
+    #: A string, and never a number.
+    #:
+    #: It is an `id_token`'s `sub` on the other door and a JSON number loses
+    #: precision in a language that has only doubles — which is most of them,
+    #: including the one most of these clients are written in.
     id: str
     nickname: str | None = None
     avatar: str | None = None
@@ -324,7 +338,7 @@ class Me:
     email_verified: bool | None = None
 
     @classmethod
-    def _parse(cls, raw: Any) -> "Me":
+    def _parse(cls, raw: Any) -> Me:
         return cls(
             id=raw["id"],
             nickname=raw.get("nickname"),
@@ -354,7 +368,7 @@ class Person:
     avatar: str | None = None
 
     @classmethod
-    def _parse(cls, raw: Any) -> "Person":
+    def _parse(cls, raw: Any) -> Person:
         return cls(
             nickname=raw["nickname"],
             verified=raw["verified"],
@@ -366,7 +380,8 @@ class Person:
 class PersonCard:
     id: int
     name: str
-    #: What this person is. All three can be false — most of a crew is none of them — and several can be true at once.
+    #: What this person is. All three can be false — most of a crew is none of them
+    #: — and several can be true at once.
     seyu: bool
     mangaka: bool
     producer: bool
@@ -374,7 +389,7 @@ class PersonCard:
     poster: str | None = None
 
     @classmethod
-    def _parse(cls, raw: Any) -> "PersonCard":
+    def _parse(cls, raw: Any) -> PersonCard:
         return cls(
             id=raw["id"],
             name=raw["name"],
@@ -392,7 +407,8 @@ class PersonPage:
 
     id: int
     name: str
-    #: What this person is. All three can be false — most of a crew is none of them — and several can be true at once.
+    #: What this person is. All three can be false — most of a crew is none of them
+    #: — and several can be true at once.
     seyu: bool
     mangaka: bool
     producer: bool
@@ -404,7 +420,7 @@ class PersonPage:
     website: str | None = None
 
     @classmethod
-    def _parse(cls, raw: Any) -> "PersonPage":
+    def _parse(cls, raw: Any) -> PersonPage:
         return cls(
             id=raw["id"],
             name=raw["name"],
@@ -432,9 +448,9 @@ class Post:
     parent: Any | None = None
 
     @classmethod
-    def _parse(cls, raw: Any) -> "Post":
+    def _parse(cls, raw: Any) -> Post:
         return cls(
-            id=PostId._parse(raw["id"]),
+            id=raw["id"],
             body=raw["body"],
             at=raw["at"],
             shikimori_id=raw.get("shikimori_id"),
@@ -450,12 +466,17 @@ class PostBody:
     shikimori_id: int | None = None
     title: str | None = None
     episode: int | None = None
-    #: Read and ignored. A post used to be able to hide behind one flag; `||a phrase||` in the body does that properly and this door is a contract somebody else's code already sends. Refusing the field would break a client over a word that no longer means anything, so it is accepted and dropped.
+    #: Read and ignored.
+    #:
+    #: A post used to be able to hide behind one flag; `||a phrase||` in the body
+    #: does that properly and this door is a contract somebody else's code already
+    #: sends. Refusing the field would break a client over a word that no longer
+    #: means anything, so it is accepted and dropped.
     spoiler: bool | None = None
     parent: int | None = None
 
     @classmethod
-    def _parse(cls, raw: Any) -> "PostBody":
+    def _parse(cls, raw: Any) -> PostBody:
         return cls(
             body=raw["body"],
             shikimori_id=raw.get("shikimori_id"),
@@ -495,7 +516,7 @@ class Profile:
     episodes: int | None = None
 
     @classmethod
-    def _parse(cls, raw: Any) -> "Profile":
+    def _parse(cls, raw: Any) -> Profile:
         return cls(
             id=raw["id"],
             nickname=raw["nickname"],
@@ -527,11 +548,12 @@ class Refusal:
 
     #: e.g. `errors.oauthInsufficientScope`
     message: str
-    #: Extra fields a refusal owes a reason for, merged in beside `message` — the scope that was missing, how long a ban has left. Absent for most.
+    #: Extra fields a refusal owes a reason for, merged in beside `message` — the
+    #: scope that was missing, how long a ban has left. Absent for most.
     detail: Any | None = None
 
     @classmethod
-    def _parse(cls, raw: Any) -> "Refusal":
+    def _parse(cls, raw: Any) -> Refusal:
         return cls(
             message=raw["message"],
             detail=raw.get("detail"),
@@ -552,11 +574,12 @@ class Related:
     title_orig: str | None = None
     poster: str | None = None
     year: int | None = None
-    #: The one number a reader sees: what the people here think of it and what the outside number said, weighed against each other.
+    #: The one number a reader sees: what the people here think of it and what the
+    #: outside number said, weighed against each other.
     score: float | None = None
 
     @classmethod
-    def _parse(cls, raw: Any) -> "Related":
+    def _parse(cls, raw: Any) -> Related:
         return cls(
             id=raw["id"],
             title=raw["title"],
@@ -577,7 +600,7 @@ class ScoreBody:
     poster: str | None = None
 
     @classmethod
-    def _parse(cls, raw: Any) -> "ScoreBody":
+    def _parse(cls, raw: Any) -> ScoreBody:
         return cls(
             score=raw["score"],
             title=raw.get("title"),
@@ -601,7 +624,7 @@ class Stats:
     average: float | None = None
 
     @classmethod
-    def _parse(cls, raw: Any) -> "Stats":
+    def _parse(cls, raw: Any) -> Stats:
         return cls(
             planned=raw["planned"],
             watching=raw["watching"],
@@ -648,7 +671,7 @@ class Title:
     rating: str | None = None
 
     @classmethod
-    def _parse(cls, raw: Any) -> "Title":
+    def _parse(cls, raw: Any) -> Title:
         return cls(
             id=raw["id"],
             title=raw["title"],
@@ -688,11 +711,12 @@ class TitleCard:
     title_orig: str | None = None
     poster: str | None = None
     year: int | None = None
-    #: The one number a reader sees: what the people here think of it and what the outside number said, weighed against each other.
+    #: The one number a reader sees: what the people here think of it and what the
+    #: outside number said, weighed against each other.
     score: float | None = None
 
     @classmethod
-    def _parse(cls, raw: Any) -> "TitleCard":
+    def _parse(cls, raw: Any) -> TitleCard:
         return cls(
             id=raw["id"],
             title=raw["title"],
@@ -717,7 +741,8 @@ class Voice:
 
     id: int
     name: str
-    #: What this person is. All three can be false — most of a crew is none of them — and several can be true at once.
+    #: What this person is. All three can be false — most of a crew is none of them
+    #: — and several can be true at once.
     seyu: bool
     mangaka: bool
     producer: bool
@@ -727,7 +752,7 @@ class Voice:
     language: str | None = None
 
     @classmethod
-    def _parse(cls, raw: Any) -> "Voice":
+    def _parse(cls, raw: Any) -> Voice:
         return cls(
             id=raw["id"],
             name=raw["name"],
@@ -753,14 +778,16 @@ class TitleCharacter:
     voices: list[Voice] | None = None
 
     @classmethod
-    def _parse(cls, raw: Any) -> "TitleCharacter":
+    def _parse(cls, raw: Any) -> TitleCharacter:
         return cls(
             id=raw["id"],
             name=raw["name"],
             roles=raw["roles"],
             name_orig=raw.get("name_orig"),
             poster=raw.get("poster"),
-            voices=(lambda _v: None if _v is None else [Voice._parse(x) for x in _v])(raw.get("voices")),
+            voices=(lambda _v: None if _v is None else [Voice._parse(x) for x in _v])(
+                raw.get("voices")
+            ),
         )
 
 
@@ -770,7 +797,8 @@ class TitleStaff:
 
     id: int
     name: str
-    #: What this person is. All three can be false — most of a crew is none of them — and several can be true at once.
+    #: What this person is. All three can be false — most of a crew is none of them
+    #: — and several can be true at once.
     seyu: bool
     mangaka: bool
     producer: bool
@@ -779,7 +807,7 @@ class TitleStaff:
     poster: str | None = None
 
     @classmethod
-    def _parse(cls, raw: Any) -> "TitleStaff":
+    def _parse(cls, raw: Any) -> TitleStaff:
         return cls(
             id=raw["id"],
             name=raw["name"],
@@ -804,7 +832,7 @@ class VoicedRole:
     poster: str | None = None
 
     @classmethod
-    def _parse(cls, raw: Any) -> "VoicedRole":
+    def _parse(cls, raw: Any) -> VoicedRole:
         return cls(
             id=raw["id"],
             name=raw["name"],

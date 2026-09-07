@@ -171,7 +171,13 @@ jobs:
       - name: What a header-only library still needs
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends cmake g++ libcurl4-openssl-dev
+          sudo apt-get install -y --no-install-recommends \
+            cmake g++ clang libcurl4-openssl-dev nlohmann-json3-dev
+      # `nlohmann-json3-dev` is on that list on purpose. Without it
+      # `find_package` comes up empty, `FetchContent` builds json inside the
+      # build tree, and the install rules are skipped — so the whole second way
+      # to use this library would go untested, which is how `install(EXPORT)`
+      # came to refuse a configure it had never been asked to do.
       # Both compilers. The library is headers and templates, and the two
       # disagree about enough of that — two-phase lookup, and which
       # forward declaration is enough — that passing under one says little.
@@ -183,11 +189,32 @@ jobs:
         working-directory: packages/cpp
       - name: clang
         run: |
-          sudo apt-get install -y --no-install-recommends clang
           cmake -S . -B build/clang -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++
           cmake --build build/clang -j"$(nproc)"
           ctest --test-dir build/clang --output-on-failure
         working-directory: packages/cpp
+
+      # The other way to use it: installed, and found by somebody else's
+      # project. Nothing had ever consumed an install, so nothing knew that only
+      # the *version* file was being installed — `find_package(acyka)` would
+      # have failed on a correct install for want of `acyka-config.cmake`. Three
+      # lines of consumer is all it takes to know.
+      - name: And an install somebody else can find
+        working-directory: packages/cpp
+        run: |
+          cmake --install build/gcc --prefix "$RUNNER_TEMP/prefix"
+          mkdir -p "$RUNNER_TEMP/consumer"
+          cd "$RUNNER_TEMP/consumer"
+          cat > CMakeLists.txt <<'CM'
+          cmake_minimum_required(VERSION 3.20)
+          project(consumer LANGUAGES CXX)
+          find_package(acyka REQUIRED)
+          add_executable(consumer main.cpp)
+          target_link_libraries(consumer PRIVATE acyka::acyka)
+          CM
+          printf '#include <acyka/acyka.hpp>\nint main() { return 0; }\n' > main.cpp
+          cmake -S . -B build -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/prefix"
+          cmake --build build
 
   # The site. Its own lockfile, because it is the one thing here that needs the
   # private kit — see the note in the README about why `apps/docs` is not a

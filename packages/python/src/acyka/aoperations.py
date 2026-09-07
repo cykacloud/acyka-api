@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from dataclasses import asdict, is_dataclass
-from typing import Any, AsyncIterator
+from typing import Any
 from urllib.parse import quote
 
 from .models import *  # noqa: F403
-from .models import Page
+from .models import Page, _asis
 
 
 def _body(value: Any) -> Any:
@@ -37,7 +38,7 @@ class AsyncAccount:
         """
         raw = await self._core.call(
             "GET",
-            f"/api/v1/me",
+            "/api/v1/me",
         )
         return Me._parse(raw)
 
@@ -65,14 +66,21 @@ class AsyncCatalogue:
         """
         raw = await self._core.call(
             "GET",
-            f"/api/v1/calendar",
+            "/api/v1/calendar",
             query={
                 "lang": lang,
             },
         )
         return Page._parse(raw, Airing._parse)
 
-    async def character_titles(self, *, id: int, lang: str | None = None, limit: int | None = None, offset: int | None = None) -> Page[Appearance]:
+    async def character_titles(
+        self,
+        *,
+        id: int,
+        lang: str | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> Page[Appearance]:
         """
         ``GET /api/v1/characters/{id}/titles``, needs ``catalog:read``
         """
@@ -87,7 +95,14 @@ class AsyncCatalogue:
         )
         return Page._parse(raw, Appearance._parse)
 
-    async def character_titles_all(self, *, id: int, lang: str | None = None, limit: int | None = None, offset: int | None = None) -> AsyncIterator[Appearance]:
+    async def character_titles_all(
+        self,
+        *,
+        id: int,
+        lang: str | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> AsyncIterator[Appearance]:
         """Every row of :meth:`character_titles`, a page at a time.
 
         Stops when a page comes back shorter than it asked for rather than
@@ -162,17 +177,32 @@ class AsyncCatalogue:
         """
         raw = await self._core.call(
             "GET",
-            f"/api/v1/genres",
+            "/api/v1/genres",
         )
         return Page._parse(raw, _asis)
 
-    async def list_titles(self, *, lang: str | None = None, limit: int | None = None, offset: int | None = None, q: str | None = None, order: str | None = None, status: str | None = None, kind: str | None = None, genre: str | None = None, score: float | None = None, year_from: int | None = None, year_to: int | None = None, rating: str | None = None) -> Page[TitleCard]:
+    async def list_titles(
+        self,
+        *,
+        lang: str | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+        q: str | None = None,
+        order: str | None = None,
+        status: str | None = None,
+        kind: str | None = None,
+        genre: str | None = None,
+        score: float | None = None,
+        year_from: int | None = None,
+        year_to: int | None = None,
+        rating: str | None = None,
+    ) -> Page[TitleCard]:
         """
         ``GET /api/v1/titles``, needs ``catalog:read``
         """
         raw = await self._core.call(
             "GET",
-            f"/api/v1/titles",
+            "/api/v1/titles",
             query={
                 "lang": lang,
                 "limit": limit,
@@ -190,7 +220,22 @@ class AsyncCatalogue:
         )
         return Page._parse(raw, TitleCard._parse)
 
-    async def list_titles_all(self, *, lang: str | None = None, limit: int | None = None, offset: int | None = None, q: str | None = None, order: str | None = None, status: str | None = None, kind: str | None = None, genre: str | None = None, score: float | None = None, year_from: int | None = None, year_to: int | None = None, rating: str | None = None) -> AsyncIterator[TitleCard]:
+    async def list_titles_all(
+        self,
+        *,
+        lang: str | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+        q: str | None = None,
+        order: str | None = None,
+        status: str | None = None,
+        kind: str | None = None,
+        genre: str | None = None,
+        score: float | None = None,
+        year_from: int | None = None,
+        year_to: int | None = None,
+        rating: str | None = None,
+    ) -> AsyncIterator[TitleCard]:
         """Every row of :meth:`list_titles`, a page at a time.
 
         Stops when a page comes back shorter than it asked for rather than
@@ -200,14 +245,34 @@ class AsyncCatalogue:
         window = limit or 100
         at = offset or 0
         while True:
-            page = await self.list_titles(limit=window, offset=at, lang=lang, q=q, order=order, status=status, kind=kind, genre=genre, score=score, year_from=year_from, year_to=year_to, rating=rating)
+            page = await self.list_titles(
+                limit=window,
+                offset=at,
+                lang=lang,
+                q=q,
+                order=order,
+                status=status,
+                kind=kind,
+                genre=genre,
+                score=score,
+                year_from=year_from,
+                year_to=year_to,
+                rating=rating,
+            )
             for row in page.items:
                 yield row
             if len(page.items) < window:
                 return
             at += len(page.items)
 
-    async def person_characters(self, *, id: int, lang: str | None = None, limit: int | None = None, offset: int | None = None) -> Page[VoicedRole]:
+    async def person_characters(
+        self,
+        *,
+        id: int,
+        lang: str | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> Page[VoicedRole]:
         """
         ``GET /api/v1/people/{id}/characters``, needs ``catalog:read``
         """
@@ -222,7 +287,14 @@ class AsyncCatalogue:
         )
         return Page._parse(raw, VoicedRole._parse)
 
-    async def person_characters_all(self, *, id: int, lang: str | None = None, limit: int | None = None, offset: int | None = None) -> AsyncIterator[VoicedRole]:
+    async def person_characters_all(
+        self,
+        *,
+        id: int,
+        lang: str | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> AsyncIterator[VoicedRole]:
         """Every row of :meth:`person_characters`, a page at a time.
 
         Stops when a page comes back shorter than it asked for rather than
@@ -239,7 +311,14 @@ class AsyncCatalogue:
                 return
             at += len(page.items)
 
-    async def person_titles(self, *, id: int, lang: str | None = None, limit: int | None = None, offset: int | None = None) -> Page[Appearance]:
+    async def person_titles(
+        self,
+        *,
+        id: int,
+        lang: str | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> Page[Appearance]:
         """
         ``GET /api/v1/people/{id}/titles``, needs ``catalog:read``
         """
@@ -254,7 +333,14 @@ class AsyncCatalogue:
         )
         return Page._parse(raw, Appearance._parse)
 
-    async def person_titles_all(self, *, id: int, lang: str | None = None, limit: int | None = None, offset: int | None = None) -> AsyncIterator[Appearance]:
+    async def person_titles_all(
+        self,
+        *,
+        id: int,
+        lang: str | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> AsyncIterator[Appearance]:
         """Every row of :meth:`person_titles`, a page at a time.
 
         Stops when a page comes back shorter than it asked for rather than
@@ -277,7 +363,7 @@ class AsyncCatalogue:
         """
         raw = await self._core.call(
             "GET",
-            f"/api/v1/titles/random",
+            "/api/v1/titles/random",
             query={
                 "lang": lang,
             },
@@ -300,7 +386,13 @@ class AsyncCatalogue:
         )
         return Page._parse(raw, Related._parse)
 
-    async def search_characters(self, *, q: str | None = None, lang: str | None = None, limit: int | None = None) -> Page[CharacterCard]:
+    async def search_characters(
+        self,
+        *,
+        q: str | None = None,
+        lang: str | None = None,
+        limit: int | None = None,
+    ) -> Page[CharacterCard]:
         """A resource of its own rather than a kind inside one `/search`. The site has
         a single search window because a person typing wants one box, and it answers
         an object of six collections — a shape built for that window. An application
@@ -312,7 +404,7 @@ class AsyncCatalogue:
         """
         raw = await self._core.call(
             "GET",
-            f"/api/v1/characters",
+            "/api/v1/characters",
             query={
                 "q": q,
                 "lang": lang,
@@ -321,13 +413,19 @@ class AsyncCatalogue:
         )
         return Page._parse(raw, CharacterCard._parse)
 
-    async def search_people(self, *, q: str | None = None, lang: str | None = None, limit: int | None = None) -> Page[PersonCard]:
+    async def search_people(
+        self,
+        *,
+        q: str | None = None,
+        lang: str | None = None,
+        limit: int | None = None,
+    ) -> Page[PersonCard]:
         """
         ``GET /api/v1/people``, needs ``catalog:read``
         """
         raw = await self._core.call(
             "GET",
-            f"/api/v1/people",
+            "/api/v1/people",
             query={
                 "q": q,
                 "lang": lang,
@@ -352,7 +450,14 @@ class AsyncCatalogue:
         )
         return Page._parse(raw, TitleCard._parse)
 
-    async def title_characters(self, *, id: int, lang: str | None = None, limit: int | None = None, offset: int | None = None) -> Page[TitleCharacter]:
+    async def title_characters(
+        self,
+        *,
+        id: int,
+        lang: str | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> Page[TitleCharacter]:
         """
         ``GET /api/v1/titles/{id}/characters``, needs ``catalog:read``
         """
@@ -367,7 +472,14 @@ class AsyncCatalogue:
         )
         return Page._parse(raw, TitleCharacter._parse)
 
-    async def title_characters_all(self, *, id: int, lang: str | None = None, limit: int | None = None, offset: int | None = None) -> AsyncIterator[TitleCharacter]:
+    async def title_characters_all(
+        self,
+        *,
+        id: int,
+        lang: str | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> AsyncIterator[TitleCharacter]:
         """Every row of :meth:`title_characters`, a page at a time.
 
         Stops when a page comes back shorter than it asked for rather than
@@ -445,7 +557,7 @@ class AsyncPeople:
         """
         raw = await self._core.call(
             "GET",
-            f"/api/v1/users",
+            "/api/v1/users",
             query={
                 "q": q,
                 "limit": limit,
@@ -463,7 +575,13 @@ class AsyncPeople:
         )
         return Page._parse(raw, Collection._parse)
 
-    async def user_followers(self, *, nick: str, limit: int | None = None, offset: int | None = None) -> Page[Person]:
+    async def user_followers(
+        self,
+        *,
+        nick: str,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> Page[Person]:
         """
         ``GET /api/v1/users/{nick}/followers``, needs ``people:read``
         """
@@ -477,7 +595,13 @@ class AsyncPeople:
         )
         return Page._parse(raw, Person._parse)
 
-    async def user_followers_all(self, *, nick: str, limit: int | None = None, offset: int | None = None) -> AsyncIterator[Person]:
+    async def user_followers_all(
+        self,
+        *,
+        nick: str,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> AsyncIterator[Person]:
         """Every row of :meth:`user_followers`, a page at a time.
 
         Stops when a page comes back shorter than it asked for rather than
@@ -494,7 +618,13 @@ class AsyncPeople:
                 return
             at += len(page.items)
 
-    async def user_following(self, *, nick: str, limit: int | None = None, offset: int | None = None) -> Page[Person]:
+    async def user_following(
+        self,
+        *,
+        nick: str,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> Page[Person]:
         """
         ``GET /api/v1/users/{nick}/following``, needs ``people:read``
         """
@@ -508,7 +638,13 @@ class AsyncPeople:
         )
         return Page._parse(raw, Person._parse)
 
-    async def user_following_all(self, *, nick: str, limit: int | None = None, offset: int | None = None) -> AsyncIterator[Person]:
+    async def user_following_all(
+        self,
+        *,
+        nick: str,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> AsyncIterator[Person]:
         """Every row of :meth:`user_following`, a page at a time.
 
         Stops when a page comes back shorter than it asked for rather than
@@ -525,7 +661,14 @@ class AsyncPeople:
                 return
             at += len(page.items)
 
-    async def user_lists(self, *, nick: str, status: str | None = None, limit: int | None = None, offset: int | None = None) -> Page[ListEntry]:
+    async def user_lists(
+        self,
+        *,
+        nick: str,
+        status: str | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> Page[ListEntry]:
         """
         ``GET /api/v1/users/{nick}/lists``, needs ``people:read``
         """
@@ -540,7 +683,14 @@ class AsyncPeople:
         )
         return Page._parse(raw, ListEntry._parse)
 
-    async def user_lists_all(self, *, nick: str, status: str | None = None, limit: int | None = None, offset: int | None = None) -> AsyncIterator[ListEntry]:
+    async def user_lists_all(
+        self,
+        *,
+        nick: str,
+        status: str | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> AsyncIterator[ListEntry]:
         """Every row of :meth:`user_lists`, a page at a time.
 
         Stops when a page comes back shorter than it asked for rather than
@@ -574,7 +724,13 @@ class AsyncLibrary:
     def __init__(self, core: Any) -> None:
         self._core = core
 
-    async def add_collection_item(self, *, code: str, shikimori_id: int, body: EntryBody) -> CollectionItem:
+    async def add_collection_item(
+        self,
+        *,
+        code: str,
+        shikimori_id: int,
+        body: EntryBody,
+    ) -> CollectionItem:
         """
         ``PUT /api/v1/collections/{code}/items/{shikimori_id}``, needs ``lists:write``
         """
@@ -601,7 +757,7 @@ class AsyncLibrary:
         """
         raw = await self._core.call(
             "POST",
-            f"/api/v1/collections",
+            "/api/v1/collections",
             body=_body(body),
         )
         return Collection._parse(raw)
@@ -622,11 +778,17 @@ class AsyncLibrary:
         """
         raw = await self._core.call(
             "GET",
-            f"/api/v1/collections",
+            "/api/v1/collections",
         )
         return Page._parse(raw, Collection._parse)
 
-    async def list_my_list(self, *, status: str | None = None, limit: int | None = None, offset: int | None = None) -> Page[ListEntry]:
+    async def list_my_list(
+        self,
+        *,
+        status: str | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> Page[ListEntry]:
         """It used to answer the whole thing, which is the bug this api's own rules
         already name: a caller with four hundred titles got four hundred rows and a
         caller with four thousand got four thousand, and the only reason nobody was
@@ -638,7 +800,7 @@ class AsyncLibrary:
         """
         raw = await self._core.call(
             "GET",
-            f"/api/v1/lists",
+            "/api/v1/lists",
             query={
                 "status": status,
                 "limit": limit,
@@ -647,7 +809,13 @@ class AsyncLibrary:
         )
         return Page._parse(raw, ListEntry._parse)
 
-    async def list_my_list_all(self, *, status: str | None = None, limit: int | None = None, offset: int | None = None) -> AsyncIterator[ListEntry]:
+    async def list_my_list_all(
+        self,
+        *,
+        status: str | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> AsyncIterator[ListEntry]:
         """Every row of :meth:`list_my_list`, a page at a time.
 
         Stops when a page comes back shorter than it asked for rather than
@@ -683,7 +851,7 @@ class AsyncLibrary:
         """
         ``DELETE /api/v1/collections/{code}/items/{shikimori_id}``, needs ``lists:write``
         """
-        raw = await self._core.call(
+        await self._core.call(
             "DELETE",
             f"/api/v1/collections/{quote(str(code))}/items/{quote(str(shikimori_id))}",
         )
@@ -693,7 +861,7 @@ class AsyncLibrary:
         """
         ``DELETE /api/v1/lists/{shikimori_id}``, needs ``lists:write``
         """
-        raw = await self._core.call(
+        await self._core.call(
             "DELETE",
             f"/api/v1/lists/{quote(str(shikimori_id))}",
         )
@@ -714,7 +882,7 @@ class AsyncLibrary:
         """
         ``DELETE /api/v1/lists/{shikimori_id}/score``, needs ``lists:write``
         """
-        raw = await self._core.call(
+        await self._core.call(
             "DELETE",
             f"/api/v1/lists/{quote(str(shikimori_id))}/score",
         )
@@ -731,19 +899,24 @@ class AsyncSocial:
         """
         ``PUT /api/v1/following/{nickname}``, needs ``social:write``
         """
-        raw = await self._core.call(
+        await self._core.call(
             "PUT",
             f"/api/v1/following/{quote(str(nickname))}",
         )
         return None
 
-    async def list_my_following(self, *, limit: int | None = None, offset: int | None = None) -> Page[Person]:
+    async def list_my_following(
+        self,
+        *,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> Page[Person]:
         """
         ``GET /api/v1/following``, needs ``social:read``
         """
         raw = await self._core.call(
             "GET",
-            f"/api/v1/following",
+            "/api/v1/following",
             query={
                 "limit": limit,
                 "offset": offset,
@@ -751,7 +924,12 @@ class AsyncSocial:
         )
         return Page._parse(raw, Person._parse)
 
-    async def list_my_following_all(self, *, limit: int | None = None, offset: int | None = None) -> AsyncIterator[Person]:
+    async def list_my_following_all(
+        self,
+        *,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> AsyncIterator[Person]:
         """Every row of :meth:`list_my_following`, a page at a time.
 
         Stops when a page comes back shorter than it asked for rather than
@@ -768,7 +946,12 @@ class AsyncSocial:
                 return
             at += len(page.items)
 
-    async def list_my_posts(self, *, limit: int | None = None, offset: int | None = None) -> Page[Post]:
+    async def list_my_posts(
+        self,
+        *,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> Page[Post]:
         """Not the feed: `social:read` is permission to read *this person's* social
         life, not everybody's. A timeline of other people's writing is a different
         question with a different answer about who may see what, and it is not
@@ -778,7 +961,7 @@ class AsyncSocial:
         """
         raw = await self._core.call(
             "GET",
-            f"/api/v1/posts",
+            "/api/v1/posts",
             query={
                 "limit": limit,
                 "offset": offset,
@@ -786,7 +969,12 @@ class AsyncSocial:
         )
         return Page._parse(raw, Post._parse)
 
-    async def list_my_posts_all(self, *, limit: int | None = None, offset: int | None = None) -> AsyncIterator[Post]:
+    async def list_my_posts_all(
+        self,
+        *,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> AsyncIterator[Post]:
         """Every row of :meth:`list_my_posts`, a page at a time.
 
         Stops when a page comes back shorter than it asked for rather than
@@ -807,7 +995,7 @@ class AsyncSocial:
         """
         ``DELETE /api/v1/following/{nickname}``, needs ``social:write``
         """
-        raw = await self._core.call(
+        await self._core.call(
             "DELETE",
             f"/api/v1/following/{quote(str(nickname))}",
         )
@@ -819,7 +1007,7 @@ class AsyncSocial:
         """
         raw = await self._core.call(
             "POST",
-            f"/api/v1/posts",
+            "/api/v1/posts",
             body=_body(body),
         )
         return Post._parse(raw)
