@@ -1,0 +1,12 @@
+node_modules/
+dist/
+build/
+target/
+.svelte-kit/
+__pycache__/
+*.egg-info/
+.venv/
+bin/
+obj/
+.gradle/
+.DS_Store

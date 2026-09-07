@@ -1,0 +1,20 @@
+{
+  "name": "acyka-api",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/typescript"
+  ],
+  "scripts": {
+    "generate": "bun run tools/generate.ts",
+    "check": "bun run --filter '*' check",
+    "test": "bun test",
+    "docs:dev": "bun run --filter '@acyka/docs' dev",
+    "docs:build": "bun run --filter '@acyka/docs' build"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5"
+  }
+}
