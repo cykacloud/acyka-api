@@ -206,7 +206,15 @@ function ask(op: Op): string[] {
 	out.push('        Self {');
 	out.push('            core,');
 	for (const p of path) {
-		out.push(`            ${ident(p.name)}: ${p.ty.k === 'string' ? `${ident(p.name)}.to_owned()` : ident(p.name)},`);
+		// Field shorthand when the argument is already the field: `id,` rather
+		// than `id: id,`. clippy's `redundant_field_names` is right about it, and
+		// with `-D warnings` in CI a generated file was failing the build for
+		// nineteen of them.
+		out.push(
+			p.ty.k === 'string'
+				? `            ${ident(p.name)}: ${ident(p.name)}.to_owned(),`
+				: `            ${ident(p.name)},`
+		);
 	}
 	for (const p of query) out.push(`            ${ident(p.name)}: None,`);
 	if (op.body) out.push('            body,');

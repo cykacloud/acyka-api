@@ -42,17 +42,32 @@ function ty(t: Ty): string {
 	}
 }
 
+/**
+ * The names in the document that are an alias rather than a shape.
+ *
+ * `PostId = str` is a `ref` in the contract exactly like `Post` is, and the two
+ * could not be told apart here — so the parser emitted `PostId._parse(...)`,
+ * which is `str._parse` and an `AttributeError` on the first post anybody read.
+ * Filled once per run before anything is emitted; a module-level set rather
+ * than an argument threaded through four call sites, because it is a property
+ * of the document and not of a value.
+ */
+const plain = new Set<string>();
+
+/** Whether a name parses itself, or is a builtin wearing a nicer name. */
+const shaped = (name: string) => !plain.has(name);
+
 /** How one value is read back out of parsed JSON. */
 function parse(t: Ty, from: string): string {
 	switch (t.k) {
 		case 'ref':
-			return `${t.name}._parse(${from})`;
+			return shaped(t.name) ? `${t.name}._parse(${from})` : from;
 		case 'array':
-			return t.of.k === 'ref' || t.of.k === 'page'
+			return (t.of.k === 'ref' && shaped(t.of.name)) || t.of.k === 'page'
 				? `[${parse(t.of, 'x')} for x in ${from}]`
 				: from;
 		case 'page':
-			return `Page._parse(${from}, ${t.of.k === 'ref' ? `${t.of.name}._parse` : '_asis'})`;
+			return `Page._parse(${from}, ${t.of.k === 'ref' && shaped(t.of.name) ? `${t.of.name}._parse` : '_asis'})`;
 		default:
 			return from;
 	}
@@ -87,7 +102,7 @@ function models(api: Api): string {
 		'    total: int | None = None',
 		'',
 		'    @classmethod',
-		'    def _parse(cls, raw: Any, row: Any) -> "Page[Any]":',
+		'    def _parse(cls, raw: Any, row: Any) -> Page[Any]:',
 		'        return cls(items=[row(x) for x in raw.get("items", [])], total=raw.get("total"))',
 		'',
 		'    def __iter__(self):',
@@ -100,7 +115,7 @@ function models(api: Api): string {
 
 	for (const alias of api.aliases) {
 		out.push('');
-		out.push(`#: ${(alias.doc ?? '').split('\n')[0]}`);
+		out.push(...comment((alias.doc ?? '').split('\n\n')[0], '#:'));
 		out.push(`${alias.name} = ${ty(alias.ty)}`);
 	}
 
@@ -122,18 +137,28 @@ function models(api: Api): string {
 
 		out.push('');
 		out.push('    @classmethod');
-		out.push(`    def _parse(cls, raw: Any) -> "${model.name}":`);
+		out.push(`    def _parse(cls, raw: Any) -> ${model.name}:`);
 		out.push('        return cls(');
 		for (const f of [...required, ...optional]) {
 			const key = `raw["${f.name}"]`;
 			if (f.optional) {
 				const got = `raw.get("${f.name}")`;
 				const inner = parse(f.ty, '_v');
-				out.push(
-					inner === '_v'
-						? `            ${snake(f.name)}=${got},`
-						: `            ${snake(f.name)}=(lambda _v: None if _v is None else ${inner})(${got}),`
-				);
+				if (inner === '_v') {
+					out.push(`            ${snake(f.name)}=${got},`);
+				} else {
+					const one = `            ${snake(f.name)}=(lambda _v: None if _v is None else ${inner})(${got}),`;
+					if (one.length <= 100) {
+						out.push(one);
+					} else {
+						// A list of a shape inside an optional field is the longest
+						// thing this emits. Broken at the call rather than inside the
+						// lambda, which is the only place it reads.
+						out.push(`            ${snake(f.name)}=(lambda _v: None if _v is None else ${inner})(`);
+						out.push(`                ${got}`);
+						out.push('            ),');
+					}
+				}
 			} else {
 				out.push(`            ${snake(f.name)}=${parse(f.ty, key)},`);
 			}
@@ -152,7 +177,11 @@ function models(api: Api): string {
 
 function pyField(f: Field, optional: boolean): string[] {
 	const out: string[] = [];
-	if (f.doc) out.push(`    #: ${f.doc.replace(/\s+/g, ' ').trim()}`);
+	// Wrapped, through the same helper every other comment here uses. It used to
+	// be one line however long the api's own sentence was, and the api writes
+	// paragraphs — which is a hundred and forty columns in a file somebody reads
+	// to find out what a field means.
+	if (f.doc) out.push(...comment(f.doc, '#:', '    '));
 	out.push(`    ${snake(f.name)}: ${ty(f.ty)}${optional ? ' | None' : ''}${optional ? ' = None' : ''}`);
 	return out;
 }
@@ -192,7 +221,7 @@ function ordered(api: Api) {
 }
 
 /** The arguments one operation takes, as a signature. */
-function signature(op: Op, async: boolean): string {
+function signature(op: Op, async: boolean): string[] {
 	const required: string[] = [];
 	const optional: string[] = [];
 	for (const p of op.params) {
@@ -203,10 +232,27 @@ function signature(op: Op, async: boolean): string {
 	if (op.body) required.push(`body: ${op.body.model}`);
 	// Keyword-only, all of them. `list_titles("frieren", 10)` is unreadable and
 	// breaks the day a parameter is added anywhere but the end.
-	const args = [...required, ...optional];
-	const params = args.length ? `self, *, ${args.join(', ')}` : 'self';
-	void async;
-	return params;
+	return [...required, ...optional];
+}
+
+/**
+ * One `def` line, or several.
+ *
+ * Six keyword arguments and a return type do not fit in a hundred columns, and
+ * a signature that runs off the side is the one line in a method somebody
+ * actually has to read. Broken the way a person would break it — one argument
+ * per line, trailing comma — rather than at whatever column it happens to
+ * reach.
+ */
+function head(kw: string, name: string, args: string[], result: string): string[] {
+	const one = `    ${kw} ${name}(${['self', ...(args.length ? ['*'] : []), ...args].join(', ')}) -> ${result}:`;
+	if (one.length <= 100) return [one];
+
+	const out = [`    ${kw} ${name}(`, '        self,'];
+	if (args.length) out.push('        *,');
+	for (const arg of args) out.push(`        ${arg},`);
+	out.push(`    ) -> ${result}:`);
+	return out;
 }
 
 function method(op: Op, async: boolean): string[] {
@@ -216,7 +262,7 @@ function method(op: Op, async: boolean): string[] {
 	const result = op.ok.ty ? ty(op.ok.ty) : 'None';
 	const name = snake(op.id);
 
-	out.push(`    ${kw} ${name}(${signature(op, async)}) -> ${result}:`);
+	out.push(...head(kw, name, signature(op, async), result));
 
 	const doc: string[] = [];
 	if (op.doc) doc.push(...comment(op.doc, '', '        ').map((l) => l.replace('         ', '        ')));
@@ -224,9 +270,17 @@ function method(op: Op, async: boolean): string[] {
 	// Two backticks is RST's inline literal, and building the line by hand keeps
 	// them out of a template literal, where they would end it.
 	const lit = (text: string) => '``' + text + '``';
-	doc.push(
-		'        ' + lit(`${op.method} ${op.path}`) + (op.scope ? `, needs ${lit(op.scope)}` : '')
-	);
+	// The address, then the scope on a line of its own when the two together
+	// would run past a hundred columns — which `ruff` is checking and which the
+	// longest of these paths does on its own.
+	const where = '        ' + lit(`${op.method} ${op.path}`);
+	const needs = op.scope ? `, needs ${lit(op.scope)}` : '';
+	if (needs && where.length + needs.length > 100) {
+		doc.push(where + ',');
+		doc.push('        needs ' + lit(op.scope!));
+	} else {
+		doc.push(where + needs);
+	}
 	out.push(`        """${(doc[0] ?? '').trim()}`);
 	for (const line of doc.slice(1)) out.push(line);
 	out.push('        """');
@@ -234,9 +288,13 @@ function method(op: Op, async: boolean): string[] {
 	const path = op.path.replace(/\{(\w+)\}/g, (_, p) => `{quote(str(${snake(p)}))}`);
 	const query = op.params.filter((p) => p.where === 'query');
 
-	out.push('        raw = ' + wait + 'self._core.call(');
+	// `raw =` only when something reads it. A 204 returns `None`, and an
+	// assignment nobody uses is a warning in every linter there is.
+	out.push('        ' + (op.ok.ty ? 'raw = ' : '') + wait + 'self._core.call(');
 	out.push(`            "${op.method}",`);
-	out.push(`            f"${path}",`);
+	// An f-string prefix only when there is something to interpolate: a path
+	// with no `{...}` in it is a plain string, and `f""` is a lint.
+	out.push(`            ${path.includes('{') ? 'f' : ''}"${path}",`);
 	if (query.length) {
 		out.push('            query={');
 		for (const q of query) out.push(`                "${q.name}": ${snake(q.name)},`);
@@ -254,7 +312,7 @@ function method(op: Op, async: boolean): string[] {
 		out.push('');
 		const gen = async ? 'async def' : 'def';
 		const iter = async ? `AsyncIterator[${item}]` : `Iterator[${item}]`;
-		out.push(`    ${gen} ${name}_all(${signature(op, async)}) -> ${iter}:`);
+		out.push(...head(gen, `${name}_all`, signature(op, async), iter));
 		out.push('        """Every row of ' + ':meth:`' + name + '`, a page at a time.');
 		out.push('');
 		out.push('        Stops when a page comes back shorter than it asked for rather than');
@@ -264,11 +322,26 @@ function method(op: Op, async: boolean): string[] {
 		out.push('        window = limit or 100');
 		out.push('        at = offset or 0');
 		out.push('        while True:');
-		out.push(
-			`            page = ${wait}self.${name}(${['limit=window', 'offset=at', ...args].join(', ')})`
-		);
-		out.push('            for row in page.items:');
-		out.push('                yield row');
+		// The paging call forwards every filter the operation takes, and
+		// `list_titles` takes eleven — two hundred columns on one line. Same rule
+		// as the signature above: one per line once it will not fit.
+		const passing = ['limit=window', 'offset=at', ...args];
+		const call = `            page = ${wait}self.${name}(${passing.join(', ')})`;
+		if (call.length <= 100) {
+			out.push(call);
+		} else {
+			out.push(`            page = ${wait}self.${name}(`);
+			for (const arg of passing) out.push(`                ${arg},`);
+			out.push('            )');
+		}
+		// `yield from` is a syntax error inside an `async def`, so the two halves
+		// genuinely differ here rather than differing by an `await`.
+		if (async) {
+			out.push('            for row in page.items:');
+			out.push('                yield row');
+		} else {
+			out.push('            yield from page.items');
+		}
 		out.push('            if len(page.items) < window:');
 		out.push('                return');
 		out.push('            at += len(page.items)');
@@ -284,12 +357,19 @@ function groups(api: Api, async: boolean): string {
 		'',
 		'from __future__ import annotations',
 		'',
+		// `collections.abc` rather than `typing`: the typing aliases have been
+		// deprecated since 3.9, and this package's floor is 3.11.
+		'from collections.abc import ' + (async ? 'AsyncIterator' : 'Iterator'),
 		'from dataclasses import asdict, is_dataclass',
-		'from typing import Any' + (async ? ', AsyncIterator' : ', Iterator'),
+		'from typing import Any',
 		'from urllib.parse import quote',
 		'',
 		'from .models import *  # noqa: F403',
-		'from .models import Page',
+		// Named, and not for tidiness: a star import skips a leading underscore,
+		// so `_asis` was undefined here and `list_genres` — a page of plain
+		// strings, the one operation that needs it — raised `NameError` on its
+		// first call.
+		'from .models import Page, _asis',
 		'',
 		'',
 		'def _body(value: Any) -> Any:',
@@ -330,8 +410,11 @@ function namespaces(api: Api): string {
 		'',
 		'from typing import Any',
 		'',
-		`from .operations import ${tags.map(cap).join(', ')}`,
-		`from .aoperations import ${tags.map((t) => `Async${cap(t)}`).join(', ')}`,
+		// `aoperations` before `operations`, and the names inside each sorted:
+		// isort's order, which `ruff` checks. Tag order is the document's and has
+		// no reason to be an import order.
+		`from .aoperations import ${tags.map((t) => `Async${cap(t)}`).sort().join(', ')}`,
+		`from .operations import ${tags.map(cap).sort().join(', ')}`,
 		'',
 		'',
 		'class Namespaces:',
@@ -351,6 +434,12 @@ function namespaces(api: Api): string {
 }
 
 export function python(api: Api): Record<string, string> {
+	// Before anything is emitted: `parse` reads this to tell `Post` from
+	// `PostId`, and getting it after the first file is written is getting it
+	// after the mistake.
+	plain.clear();
+	for (const alias of api.aliases) plain.add(alias.name);
+
 	return {
 		'packages/python/src/acyka/models.py': models(api),
 		'packages/python/src/acyka/operations.py': groups(api, false),

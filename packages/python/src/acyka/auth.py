@@ -17,17 +17,18 @@ import os
 import secrets
 import threading
 import time
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Iterable, Protocol
+from typing import Any, Protocol
 from urllib.parse import urlencode
 
 import httpx
 
 from .errors import AcykaError, Unauthorized
 
-AUTHORIZE = "https://api.acyka.cc/api/oauth2/authorize"
-TOKEN = "https://api.acyka.cc/api/oauth2/token"
-DEVICE = "https://api.acyka.cc/api/oauth2/device_authorization"
+AUTHORIZE = "https://acyka.cc/api/oauth2/authorize"
+TOKEN = "https://acyka.cc/api/oauth2/token"
+DEVICE = "https://acyka.cc/api/oauth2/device_authorization"
 
 
 @dataclass(frozen=True, slots=True)
@@ -65,7 +66,7 @@ class Tokens:
         return bool(self.access_token) and self.expires_at > time.time()
 
     @classmethod
-    def _parse(cls, raw: dict[str, Any]) -> "Tokens":
+    def _parse(cls, raw: dict[str, Any]) -> Tokens:
         return cls(
             access_token=raw["access_token"],
             token_type=raw.get("token_type", "Bearer"),

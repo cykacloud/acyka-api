@@ -1,0 +1,157 @@
+/*
+ * The site is drawn with the kit the api's own site is drawn with.
+ *
+ * Not a documentation theme with our colours poured over it: a reader arriving
+ * from acyka.cc should recognise where they are, and the tokens, the motion and
+ * the components are the thing that makes that true rather than a matching
+ * accent colour.
+ */
+@import '@cyka/ui/fonts.css';
+@import '@cyka/ui/tokens.css';
+@import '@cyka/ui/motion.css';
+
+:root {
+	color-scheme: dark;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+/*
+ * One ground, and the flat one.
+ *
+ * `--bg` is a purple radial the catalogue wears behind posters. Behind a column
+ * of prose it is a wash with nothing in it, and it tints every neutral surface
+ * sitting on top — so this site paints `--bg-solid` and paints it on `html` as
+ * well as `body`. `html` matters on its own: it is what a browser shows past
+ * the end of the page when somebody overscrolls, and a transparent one is a
+ * white flash at the bottom of a dark site.
+ */
+html,
+body {
+	margin: 0;
+	padding: 0;
+	background: var(--bg-solid);
+	color: var(--text);
+	font-family: var(--font-text);
+	font-size: var(--fs-body);
+	-webkit-font-smoothing: antialiased;
+}
+
+a {
+	color: var(--accent-hover);
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+/* --- prose, for the guides ------------------------------------------------ */
+
+.prose {
+	max-width: 42rem;
+	line-height: 1.65;
+}
+
+.prose > * + * {
+	margin-top: var(--s-3);
+}
+
+.prose h1 {
+	font-size: var(--fs-h1);
+	letter-spacing: -0.6px;
+	line-height: 1.15;
+	margin-bottom: var(--s-2);
+}
+
+.prose h2 {
+	font-size: var(--fs-h2);
+	letter-spacing: -0.4px;
+	margin-top: var(--s-8);
+	padding-top: var(--s-3);
+	border-top: 1px solid var(--border);
+}
+
+.prose h3 {
+	font-size: var(--fs-h3);
+	margin-top: var(--s-6);
+}
+
+.prose p,
+.prose li {
+	color: var(--text-caption);
+}
+
+.prose strong {
+	color: var(--text-title);
+	font-weight: 600;
+}
+
+.prose ul,
+.prose ol {
+	padding-left: var(--s-6);
+}
+
+.prose li + li {
+	margin-top: var(--s-1);
+}
+
+.prose code {
+	font-family: var(--font-mono);
+	font-size: 0.9em;
+	padding: 0.1em 0.35em;
+	border-radius: var(--r-sm);
+	background: var(--surface-2);
+	color: var(--text-title);
+}
+
+.prose pre code {
+	padding: 0;
+	background: none;
+}
+
+.prose blockquote {
+	margin: 0;
+	padding-left: var(--s-4);
+	border-left: 2px solid var(--accent-soft);
+	color: var(--text-muted);
+}
+
+.prose table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: var(--fs-sub);
+}
+
+.prose th,
+.prose td {
+	text-align: left;
+	padding: var(--s-2) var(--s-3);
+	border-bottom: 1px solid var(--border);
+	vertical-align: top;
+}
+
+.prose th {
+	color: var(--text-2);
+	font-weight: 600;
+	font-size: var(--fs-tiny);
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+}
+
+/* An anchor a heading can be linked by, without a link cluttering the heading
+   until somebody is looking for one. */
+.prose :is(h2, h3) > a.anchor {
+	opacity: 0;
+	margin-left: var(--s-2);
+	color: var(--text-muted);
+	font-weight: 400;
+	transition: opacity var(--t) var(--ease-out);
+}
+
+.prose :is(h2, h3):hover > a.anchor,
+.prose :is(h2, h3) > a.anchor:focus-visible {
+	opacity: 1;
+}

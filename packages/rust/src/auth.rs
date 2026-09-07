@@ -19,9 +19,9 @@ use tokio::sync::Mutex;
 
 use crate::error::{Error, Result};
 
-pub const AUTHORIZE: &str = "https://api.acyka.cc/api/oauth2/authorize";
-pub const TOKEN: &str = "https://api.acyka.cc/api/oauth2/token";
-pub const DEVICE: &str = "https://api.acyka.cc/api/oauth2/device_authorization";
+pub const AUTHORIZE: &str = "https://acyka.cc/api/oauth2/authorize";
+pub const TOKEN: &str = "https://acyka.cc/api/oauth2/token";
+pub const DEVICE: &str = "https://acyka.cc/api/oauth2/device_authorization";
 
 /// Where the provider lives. Overridable for a laptop, fixed in practice.
 #[derive(Debug, Clone)]
@@ -123,7 +123,9 @@ async fn exchange(
     secret: Option<&str>,
 ) -> Result<Tokens> {
     let http = reqwest::Client::new();
-    let mut request = http.post(endpoint).header(reqwest::header::ACCEPT, "application/json");
+    let mut request = http
+        .post(endpoint)
+        .header(reqwest::header::ACCEPT, "application/json");
 
     let mut fields = form.to_vec();
     match secret {
@@ -517,7 +519,11 @@ pub async fn start_device(
         None => form.push(("client_id", client_id)),
     }
 
-    let response = request.form(&form).send().await.map_err(Error::Unreachable)?;
+    let response = request
+        .form(&form)
+        .send()
+        .await
+        .map_err(Error::Unreachable)?;
     let status = response.status();
     let text = response.text().await.map_err(Error::Unreachable)?;
 
@@ -553,10 +559,7 @@ pub async fn await_device(
         match exchange(
             &endpoints.token,
             &[
-                (
-                    "grant_type",
-                    "urn:ietf:params:oauth:grant-type:device_code",
-                ),
+                ("grant_type", "urn:ietf:params:oauth:grant-type:device_code"),
                 ("device_code", device_code),
             ],
             client_id,
@@ -585,7 +588,10 @@ mod tests {
     #[test]
     fn a_pkce_pair_is_the_challenge_of_its_own_verifier() {
         let pair = pkce();
-        assert_eq!(pair.challenge, b64(&Sha256::digest(pair.verifier.as_bytes())));
+        assert_eq!(
+            pair.challenge,
+            b64(&Sha256::digest(pair.verifier.as_bytes()))
+        );
         // 32 bytes, base64url with no padding
         assert_eq!(pair.verifier.len(), 43);
         assert!(!pair.verifier.contains('='));

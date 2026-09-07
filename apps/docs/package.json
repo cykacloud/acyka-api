@@ -1,0 +1,29 @@
+{
+  "name": "@acyka/docs",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "bun ./build/index.js",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json"
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-node": "^5.3.3",
+    "@sveltejs/kit": "^2.46.4",
+    "@sveltejs/vite-plugin-svelte": "^6.2.1",
+    "@types/bun": "latest",
+    "svelte": "^5.42.2",
+    "svelte-check": "^4.3.3",
+    "typescript": "^5",
+    "vite": "^7.1.9"
+  },
+  "dependencies": {
+    "@cyka/ui": "git+ssh://git@github.com/cykacloud/ui.git#v0.7.1",
+    "@tabler/icons-svelte": "^3.46.0",
+    "bits-ui": "^2.18.1",
+    "shiki": "^1.24.0"
+  }
+}

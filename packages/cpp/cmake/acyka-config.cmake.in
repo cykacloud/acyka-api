@@ -1,0 +1,22 @@
+@PACKAGE_INIT@
+
+# The two libraries the interface target links, found the consumer's way.
+#
+# `find_dependency` rather than `find_package`: it forwards QUIET and REQUIRED
+# from the `find_package(acyka)` call that got here, and it fails the whole
+# lookup with "acyka could not be found because nlohmann_json is missing"
+# instead of letting the configure succeed and the compile fail on a header.
+include(CMakeFindDependencyMacro)
+
+find_dependency(nlohmann_json 3.11)
+
+# Only when the installed build actually linked it. `ACYKA_WITH_CURL=OFF` ships
+# the transport seam and no transport, and requiring libcurl of a consumer who
+# brought their own HTTP client is the argument that option exists to avoid.
+if(@ACYKA_WITH_CURL@)
+    find_dependency(CURL)
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/acyka-targets.cmake")
+
+check_required_components(acyka)

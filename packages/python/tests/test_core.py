@@ -72,7 +72,13 @@ class TestOneRequest:
 class TestARefusalBecomesAType:
     @pytest.mark.parametrize(
         "status,kind",
-        [(400, BadRequest), (401, Unauthorized), (403, Forbidden), (404, NotFound), (500, ServerError)],
+        [
+            (400, BadRequest),
+            (401, Unauthorized),
+            (403, Forbidden),
+            (404, NotFound),
+            (500, ServerError),
+        ],
     )
     def test_by_status(self, status, kind):
         c, _ = core([said(status, {"message": "errors.something"})], retries=0)
@@ -120,7 +126,10 @@ class TestThePaceTheServerSets:
     def test_a_wait_past_the_ceiling_is_raised_rather_than_slept_through(self):
         # Sleeping a whole window inside one call looks exactly like a hang to
         # whoever is waiting on it.
-        c, asked = core([said(429, {"message": "common.tooOften"}, {"retry-after": "60"})], max_wait=1.0)
+        c, asked = core(
+            [said(429, {"message": "common.tooOften"}, {"retry-after": "60"})],
+            max_wait=1.0,
+        )
         with pytest.raises(RateLimited) as raised:
             c.call("GET", "/api/v1/titles")
         assert raised.value.retry_after == 60
@@ -133,7 +142,11 @@ class TestThePaceTheServerSets:
                 said(
                     200,
                     {},
-                    {"x-ratelimit-limit": "60", "x-ratelimit-remaining": "58", "x-ratelimit-reset": "31"},
+                    {
+                        "x-ratelimit-limit": "60",
+                        "x-ratelimit-remaining": "58",
+                        "x-ratelimit-reset": "31",
+                    },
                 )
             ],
             on_pace=seen.append,
@@ -171,7 +184,9 @@ class TestATokenThatExpiresMidFlight:
 
     def test_is_refreshed_once_and_retried_once(self):
         auth = self.Renewing()
-        transport, asked = scripted([said(401, {"message": "errors.unauthorized"}), said(200, {"id": "1"})])
+        transport, asked = scripted(
+            [said(401, {"message": "errors.unauthorized"}), said(200, {"id": "1"})]
+        )
         c = Core(auth, Options(retries=0), httpx.Client(transport=transport))
 
         c.call("GET", "/api/v1/me")
@@ -184,7 +199,10 @@ class TestATokenThatExpiresMidFlight:
         # same one and the loop would never end.
         auth = self.Renewing()
         transport, asked = scripted(
-            [said(401, {"message": "errors.unauthorized"}), said(401, {"message": "errors.unauthorized"})]
+            [
+                said(401, {"message": "errors.unauthorized"}),
+                said(401, {"message": "errors.unauthorized"}),
+            ]
         )
         c = Core(auth, Options(retries=0), httpx.Client(transport=transport))
 

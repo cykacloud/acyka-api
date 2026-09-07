@@ -30,9 +30,9 @@ public interface IAuth
 
 /// <summary>Where the provider lives. Overridable for a laptop, fixed in practice.</summary>
 public sealed record Endpoints(
-    string Authorize = "https://api.acyka.cc/api/oauth2/authorize",
-    string Token = "https://api.acyka.cc/api/oauth2/token",
-    string Device = "https://api.acyka.cc/api/oauth2/device_authorization");
+    string Authorize = "https://acyka.cc/api/oauth2/authorize",
+    string Token = "https://acyka.cc/api/oauth2/token",
+    string Device = "https://acyka.cc/api/oauth2/device_authorization");
 
 public sealed record Tokens(
     [property: JsonPropertyName("access_token")] string AccessToken,

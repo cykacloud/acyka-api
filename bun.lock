@@ -1,0 +1,63 @@
+{
+  "lockfileVersion": 1,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "acyka-api",
+      "devDependencies": {
+        "@types/bun": "latest",
+        "typescript": "^5",
+      },
+    },
+    "packages/cpp": {
+      "name": "@acyka/cpp-sdk",
+      "version": "1.0.0",
+    },
+    "packages/csharp": {
+      "name": "@acyka/csharp-sdk",
+      "version": "1.0.0",
+    },
+    "packages/kotlin": {
+      "name": "@acyka/kotlin-sdk",
+      "version": "1.0.0",
+    },
+    "packages/python": {
+      "name": "@acyka/python-sdk",
+      "version": "1.0.0",
+    },
+    "packages/rust": {
+      "name": "@acyka/rust-sdk",
+      "version": "1.0.0",
+    },
+    "packages/typescript": {
+      "name": "@acyka/api",
+      "version": "1.0.0",
+      "devDependencies": {
+        "typescript": "^5",
+      },
+    },
+  },
+  "packages": {
+    "@acyka/api": ["@acyka/api@workspace:packages/typescript"],
+
+    "@acyka/cpp-sdk": ["@acyka/cpp-sdk@workspace:packages/cpp"],
+
+    "@acyka/csharp-sdk": ["@acyka/csharp-sdk@workspace:packages/csharp"],
+
+    "@acyka/kotlin-sdk": ["@acyka/kotlin-sdk@workspace:packages/kotlin"],
+
+    "@acyka/python-sdk": ["@acyka/python-sdk@workspace:packages/python"],
+
+    "@acyka/rust-sdk": ["@acyka/rust-sdk@workspace:packages/rust"],
+
+    "@types/bun": ["@types/bun@1.4.1", "", { "dependencies": { "bun-types": "1.4.1" } }, "sha512-0AVGiTXGajf1rgKom3N+c5L7CBxuoyyv1i44M0nX4UDK0G/fnRAMiri93nHuVPIb429KKtAgj7HatVmmOjeQLA=="],
+
+    "@types/node": ["@types/node@26.5.0", "", { "dependencies": { "undici-types": "~8.9.0" } }, "sha512-dVSGpriSoCgz8WnDNTuSSuSv1PC/ALXihO4ulRZt7Md8k9mlbdin3lGOcDE8SnWOgf513ByWlXd7BK4azmyg/A=="],
+
+    "bun-types": ["bun-types@1.4.1", "", { "dependencies": { "@types/node": "*" } }, "sha512-loKuVrAFZKfEv+JvWkHRS9GW5IqLuLRjVXN9p+vZvBN86O5hf/pBZQ5hSoyipsrMmWObZBDvWnlmKvjKTM0PdA=="],
+
+    "typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
+
+    "undici-types": ["undici-types@8.9.0", "", {}, "sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg=="],
+  }
+}
