@@ -28,33 +28,15 @@ env:
 
 jobs:
   image:
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      # A builder that outlives the job.
-      #
-      # On a hosted runner the machine is thrown away and a remote cache is the
-      # only one worth having. On our own it is the wrong answer twice over: the
-      # layers are on this disk already, and shipping them to GitHub and pulling
-      # them back is the slow part.
+      # The machine is thrown away with the job, so the registry is the only
+      # cache there is — which is what `cache-from` below is for, and it is
+      # enough: the expensive layer is `bun install`, and it only changes when a
+      # lockfile does.
       - uses: docker/setup-buildx-action@v3
-        with:
-          name: acyka-docs
-          cleanup: false
-
-      # A registry credential this job does not share with anything beside it.
-      #
-      # `docker login` writes to `~/.docker/config.json` and `login-action`'s
-      # post step logs out again. Three runners share this host as one user, so
-      # a neighbour finishing takes the credential out from under whatever is
-      # still pushing — which fails with `denied: denied` and reads exactly like
-      # a permissions problem. `DOCKER_CONFIG` per runner temp is one config per
-      # job by construction.
-      - name: A docker config of this job's own
-        run: |
-          echo "DOCKER_CONFIG=$RUNNER_TEMP/docker" >> "$GITHUB_ENV"
-          mkdir -p "$RUNNER_TEMP/docker"
 
       - uses: docker/login-action@v3
         with:
@@ -115,20 +97,10 @@ jobs:
             kit_key=KIT_SSH_KEY
           cache-from: type=registry,ref=${{ env.IMAGE }}:latest
 
-      # Buildkit keeps everything it has ever built unless told otherwise, and
-      # this builder is not thrown away with the job any more. A ceiling rather
-      # than a calendar: `until=168h` throws out what has not been touched in a
-      # week, and on a repository that deploys several times a day that is
-      # nothing at all. A full disk does not announce itself as a full disk — it
-      # shows up as a push that was denied a permission it has.
-      - name: Keep the cache from growing for ever
-        if: always()
-        continue-on-error: true
-        run: docker buildx prune --force --max-used-space 4gb --builder acyka-docs
 
   deploy:
     needs: [image]
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     steps:
       - name: The three things this needs and cannot invent
         env:

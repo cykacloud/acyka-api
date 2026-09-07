@@ -26,7 +26,7 @@ jobs:
   # The gate. Six build systems, six places the version lives, and no shared
   # notion of one — see `.github/scripts/versions.ts`.
   agreed:
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.v.outputs.version }}
     steps:
@@ -57,7 +57,7 @@ jobs:
 
   npm:
     needs: [agreed]
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -77,7 +77,7 @@ jobs:
 
   pypi:
     needs: [agreed]
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -98,7 +98,7 @@ jobs:
 
   crates:
     needs: [agreed]
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -114,7 +114,7 @@ jobs:
 
   maven:
     needs: [agreed]
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -148,7 +148,7 @@ jobs:
 
   nuget:
     needs: [agreed]
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -171,7 +171,7 @@ jobs:
   # what a package manager was providing.
   headers:
     needs: [agreed]
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: One tarball of the headers
@@ -197,7 +197,7 @@ jobs:
   said:
     needs: [agreed, npm, pypi, crates, maven, nuget, headers]
     if: always()
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     steps:
       - name: Who went out
         run: |

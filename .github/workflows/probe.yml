@@ -1,9 +1,0 @@
-name: probe
-on:
-  push:
-    paths: ['.github/workflows/probe.yml']
-jobs:
-  hosted:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "a github-hosted runner took this job"

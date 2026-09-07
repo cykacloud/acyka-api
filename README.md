@@ -127,8 +127,12 @@ and every control.
 | `deploy.yml` | a push that touches the site | builds the image, pushes it to ghcr, tells the box to pull it |
 | `publish.yml` | a `v*` tag | npm, PyPI, crates.io, Maven Central, NuGet, and a tarball of the C++ headers |
 
-The runners are the org's own — GitHub's are refused on billing for this account,
-which is a failure no amount of correct YAML answers.
+These run on GitHub's own runners, which is the opposite of the answer
+`cykacloud/acyka` reached — and for two reasons. Its three self-hosted runners
+are registered to *that* repository rather than to the organisation, so a job
+here queues for a machine that will never take it; and the hosted image already
+carries every toolchain this needs, while the warm cargo `target/` that makes
+the other repo's build worth a dedicated box has no equivalent here.
 
 ### The secrets it needs
 

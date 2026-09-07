@@ -10,17 +10,23 @@ on:
   pull_request:
   workflow_dispatch:
 
-# Where these run.
+# Where these run: GitHub's own, and that is the opposite of the answer
+# `cykacloud/acyka` reached.
 #
-# GitHub's own runners are refused on billing for this org — "recent account
-# payments have failed or your spending limit needs to be increased", which is a
-# failure no amount of correct YAML answers. The org's own runners have no
-# minutes to run out of: `acyka-b1` to `acyka-b3`, all three on one box that
-# exists for nothing else.
+# Two things make it the right one here. **The three self-hosted runners are
+# registered to that repository and not to the organisation**, so a job here
+# queues for a runner that will never take it — eight of them sat `queued`
+# until this was changed, which is a failure with no error in it. And **the
+# hosted image already carries every toolchain this needs**: dotnet, a JDK,
+# Python, cmake, clang. The acyka repo runs on its own box because a warm cargo
+# `target/` is the difference between minutes and twenty; nothing here has a
+# cache worth that, and the one docker build falls back on
+# `cache-from: type=registry`, which works the same on a machine that is thrown
+# away.
 #
-# `Linux, X64` alongside `self-hosted` rather than the bare label: those two are
-# applied automatically and cannot be removed, so naming them costs nothing and
-# is what stops a job landing on the wrong machine the day a fourth runner joins.
+# Verified rather than assumed. That repository's comment says GitHub's runners
+# are refused on billing for this account, so a one-step workflow was pushed to
+# ask: it was taken and finished in six seconds.
 env:
   # every toolchain below writes into the workspace rather than into $HOME, so
   # three runners on one box do not fight over one cache
@@ -37,7 +43,7 @@ jobs:
   # whose mistakes ship, and a contract change shows up in a pull request as the
   # six changes it actually causes.
   contract:
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -59,7 +65,7 @@ jobs:
       - run: bun test
 
   typescript:
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -73,7 +79,7 @@ jobs:
       - run: bun --cwd packages/typescript run build
 
   python:
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -99,7 +105,7 @@ jobs:
         working-directory: packages/python
 
   rust:
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -127,7 +133,7 @@ jobs:
         working-directory: packages/rust
 
   kotlin:
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -144,7 +150,7 @@ jobs:
         working-directory: packages/kotlin
 
   csharp:
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -159,7 +165,7 @@ jobs:
         working-directory: packages/csharp
 
   cpp:
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: What a header-only library still needs
@@ -187,7 +193,7 @@ jobs:
   # private kit — see the note in the README about why `apps/docs` is not a
   # member of the root workspace.
   docs:
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
