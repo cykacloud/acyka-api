@@ -1,0 +1,24 @@
+{
+  "name": "@acyka/api",
+  "version": "1.0.0",
+  "description": "A client for the acyka API: the catalogue, profiles, lists and writing.",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/cykacloud/acyka-api.git", "directory": "packages/typescript" },
+  "homepage": "https://dev.acyka.cc",
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "main": "./dist/index.js",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" }
+  },
+  "files": ["dist", "README.md"],
+  "keywords": ["acyka", "anime", "api", "client", "oauth"],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "check": "tsc --noEmit",
+    "prepublishOnly": "bun run build"
+  },
+  "devDependencies": {
+    "typescript": "^5"
+  }
+}
