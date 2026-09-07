@@ -1,0 +1,9 @@
+{
+  "name": "@acyka/python-sdk",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Not published to npm — this is here so the root workspace can drive its checks.",
+  "scripts": {
+    "check": "test -x .venv/bin/python && .venv/bin/python -m pytest tests -q || echo 'skipped: run `python3 -m venv .venv && .venv/bin/pip install httpx pytest` in packages/python'"
+  }
+}

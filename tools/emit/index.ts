@@ -7,7 +7,8 @@
 
 import type { Api } from '../spec';
 import { typescript } from './typescript';
+import { python } from './python';
 
 export type Emitter = (api: Api) => Record<string, string>;
 
-export const emitters: Emitter[] = [typescript];
+export const emitters: Emitter[] = [typescript, python];
