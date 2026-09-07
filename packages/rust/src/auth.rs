@@ -19,9 +19,9 @@ use tokio::sync::Mutex;
 
 use crate::error::{Error, Result};
 
-pub const AUTHORIZE: &str = "https://api.acyka.cc/api/oauth2/authorize";
-pub const TOKEN: &str = "https://api.acyka.cc/api/oauth2/token";
-pub const DEVICE: &str = "https://api.acyka.cc/api/oauth2/device_authorization";
+pub const AUTHORIZE: &str = "https://acyka.cc/api/oauth2/authorize";
+pub const TOKEN: &str = "https://acyka.cc/api/oauth2/token";
+pub const DEVICE: &str = "https://acyka.cc/api/oauth2/device_authorization";
 
 /// Where the provider lives. Overridable for a laptop, fixed in practice.
 #[derive(Debug, Clone)]

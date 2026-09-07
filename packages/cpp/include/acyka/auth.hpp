@@ -33,9 +33,9 @@ namespace acyka {
 
 /// Where the provider lives. Overridable for a laptop, fixed in practice.
 struct endpoints {
-    std::string authorize = "https://api.acyka.cc/api/oauth2/authorize";
-    std::string token = "https://api.acyka.cc/api/oauth2/token";
-    std::string device = "https://api.acyka.cc/api/oauth2/device_authorization";
+    std::string authorize = "https://acyka.cc/api/oauth2/authorize";
+    std::string token = "https://acyka.cc/api/oauth2/token";
+    std::string device = "https://acyka.cc/api/oauth2/device_authorization";
 };
 
 struct tokens {

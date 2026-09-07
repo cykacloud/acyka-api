@@ -51,6 +51,16 @@ jobs:
           # changed.
           cp "$RUNNER_TEMP/spec.json" openapi.json
 
+      # The addresses the six carry are not in the contract and never can be:
+      # `/oauth2/token` is RFC 6749's endpoint, form-encoded and shaped by a
+      # spec rather than by us, so the generator never sees it and the constants
+      # are hand-written six times. All six shipped pointing at a 404.
+      #
+      # Before the regeneration, because it is a question about the live server
+      # and it is the reason this workflow talks to one.
+      - name: The six point where the server says
+        run: bun .github/scripts/endpoints.ts
+
       - id: moved
         name: Did anything move
         run: |

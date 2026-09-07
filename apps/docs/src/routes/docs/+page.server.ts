@@ -25,7 +25,9 @@ for (const title of found.items) {
   console.log(title.id, title.title, title.year, title.score);
 }`),
 			curl: sh(`# the same call, which is the one you can check by hand
-TOKEN=$(curl -s https://api.acyka.cc/api/oauth2/token \\
+# the provider is on acyka.cc — its endpoints hang off the issuer, and
+# the discovery document is the authority on all of them
+TOKEN=$(curl -s https://acyka.cc/api/oauth2/token \\
   -u "$ACYKA_ID:$ACYKA_SECRET" \\
   -d grant_type=client_credentials \\
   -d scope=catalog:read | jq -r .access_token)

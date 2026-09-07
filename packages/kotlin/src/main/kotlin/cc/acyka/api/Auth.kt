@@ -40,9 +40,9 @@ public interface Auth {
 
 /** Where the provider lives. Overridable for a laptop, fixed in practice. */
 public data class Endpoints(
-    val authorize: String = "https://api.acyka.cc/api/oauth2/authorize",
-    val token: String = "https://api.acyka.cc/api/oauth2/token",
-    val device: String = "https://api.acyka.cc/api/oauth2/device_authorization",
+    val authorize: String = "https://acyka.cc/api/oauth2/authorize",
+    val token: String = "https://acyka.cc/api/oauth2/token",
+    val device: String = "https://acyka.cc/api/oauth2/device_authorization",
 )
 
 @Serializable

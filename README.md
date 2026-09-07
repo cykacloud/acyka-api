@@ -123,7 +123,7 @@ and every control.
 | workflow | when | what |
 |---|---|---|
 | `check.yml` | every push and pull request | the six libraries in their own toolchains, and the site — including `bun run generate` leaving a clean tree, which is the whole assertion that the committed clients match the contract |
-| `contract.yml` | daily, and on demand | asks the live server for its document, regenerates, opens one pull request if anything moved |
+| `contract.yml` | daily, and on demand | asks the live server for its document, checks the six OAuth addresses against what it advertises, regenerates, and opens one pull request if anything moved |
 | `deploy.yml` | a push that touches the site | builds the image, pushes it to ghcr, tells the box to pull it |
 | `publish.yml` | a `v*` tag | npm, PyPI, crates.io, Maven Central, NuGet, and a tarball of the C++ headers |
 
@@ -159,3 +159,24 @@ and the fix is a patch bump rather than a re-run.
 bun .github/scripts/versions.ts          # what the six say now
 bun .github/scripts/versions.ts 1.1.0    # would that tag be accepted
 ```
+
+### The addresses that are not in the contract
+
+`/oauth2/token` is RFC 6749's endpoint — form-encoded, shaped by a spec rather
+than by us — so it is not in `openapi.json`, the generator never sees it, and the
+constant is hand-written six times. All six shipped pointing at
+`https://api.acyka.cc/api/oauth2/token`, which is a 404, and nothing here could
+have noticed. Three separate facts had to be right at once: only `acyka.cc`
+strips an `/api` prefix, every endpoint hangs off the **issuer** rather than off
+the api's host, and the issuer is `https://acyka.cc`.
+
+So they are checked against the server rather than reviewed:
+
+```bash
+bun .github/scripts/endpoints.ts                    # against production
+bun .github/scripts/endpoints.ts http://localhost:3001
+```
+
+A client should really read `/.well-known/openid-configuration` itself, which is
+what the guide says and what the playground does. The constants exist to save the
+common case a round trip.

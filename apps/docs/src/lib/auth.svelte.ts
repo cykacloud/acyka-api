@@ -20,9 +20,55 @@
 
 import { browser } from '$app/environment';
 
+/**
+ * Where the api answers.
+ *
+ * Paths in the reference already carry `/api/v1`, because that is what
+ * `openapi.json` declares beside this host — so the two compose and nothing
+ * here adds a prefix.
+ */
 const ORIGIN = 'https://api.acyka.cc';
-const AUTHORIZE = `${ORIGIN}/api/oauth2/authorize`;
-const TOKEN = `${ORIGIN}/api/oauth2/token`;
+
+/**
+ * The issuer, and the two endpoints read off it rather than written down.
+ *
+ * These *were* written down, as `https://api.acyka.cc/api/oauth2/authorize` —
+ * and that address is a 404. Only `acyka.cc` strips an `/api` prefix; on the
+ * api's own host the provider answers at `/oauth2/authorize`, and the issuer is
+ * `https://acyka.cc` in any case because an issuer identifier is a name rather
+ * than a route. Three facts, and guessing needed all three.
+ *
+ * So it asks, which is what an OIDC client is supposed to do and what the
+ * guide next to this tells a reader to do. One request, held for the tab: if
+ * the endpoints ever move, every client that reads this document follows and
+ * every client that hardcoded it — as this one did — does not.
+ *
+ * There is deliberately no fallback. A hardcoded pair behind a failed fetch is
+ * a wrong answer wearing a right one, and the failure it hides is the discovery
+ * document being unreachable, which is worth seeing.
+ */
+const ISSUER = 'https://acyka.cc';
+
+type Doors = { authorization_endpoint: string; token_endpoint: string };
+
+let asked: Promise<Doors> | undefined;
+
+function doors(): Promise<Doors> {
+	asked ??= (async () => {
+		const response = await fetch(`${ISSUER}/.well-known/openid-configuration`);
+		if (!response.ok) {
+			asked = undefined;
+			throw new Error(`the issuer's discovery document answered ${response.status}`);
+		}
+		const document = (await response.json()) as Partial<Doors>;
+		if (!document.authorization_endpoint || !document.token_endpoint) {
+			asked = undefined;
+			throw new Error('the discovery document does not name both endpoints');
+		}
+		return { ...document } as Doors;
+	})();
+	return asked;
+}
 
 /**
  * The application this site is registered as.
@@ -131,7 +177,8 @@ class Signed {
 		const state = b64(crypto.getRandomValues(new Uint8Array(18)));
 		session.set(PENDING, JSON.stringify({ verifier: pair.verifier, state, back } satisfies Pending));
 
-		const url = new URL(AUTHORIZE);
+		const { authorization_endpoint } = await doors();
+		const url = new URL(authorization_endpoint);
 		url.searchParams.set('response_type', 'code');
 		url.searchParams.set('client_id', CLIENT_ID);
 		url.searchParams.set('redirect_uri', `${location.origin}/playground/callback`);
@@ -155,7 +202,8 @@ class Signed {
 		// visit the route can hand it a code of their choosing.
 		if (pending.state !== state) throw new Error('the state did not match');
 
-		const response = await fetch(TOKEN, {
+		const { token_endpoint } = await doors();
+		const response = await fetch(token_endpoint, {
 			method: 'POST',
 			headers: { 'content-type': 'application/x-www-form-urlencoded' },
 			body: new URLSearchParams({

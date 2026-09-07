@@ -25,9 +25,9 @@ import httpx
 
 from .errors import AcykaError, Unauthorized
 
-AUTHORIZE = "https://api.acyka.cc/api/oauth2/authorize"
-TOKEN = "https://api.acyka.cc/api/oauth2/token"
-DEVICE = "https://api.acyka.cc/api/oauth2/device_authorization"
+AUTHORIZE = "https://acyka.cc/api/oauth2/authorize"
+TOKEN = "https://acyka.cc/api/oauth2/token"
+DEVICE = "https://acyka.cc/api/oauth2/device_authorization"
 
 
 @dataclass(frozen=True, slots=True)

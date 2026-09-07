@@ -12,7 +12,18 @@
 import { AcykaError, Unauthorized } from './errors';
 import type { Scope } from './generated/types';
 
-/** Where the provider lives. Overridable for a laptop, fixed in practice. */
+/**
+ * Where the provider lives. Overridable for a laptop, fixed in practice.
+ *
+ * **`acyka.cc`, not `api.acyka.cc`** — and that is not a typo for the host in
+ * `baseUrl`. The issuer identifier is `https://acyka.cc`, so every endpoint the
+ * discovery document advertises hangs off that name, and only that host strips
+ * an `/api` prefix. These three are exactly what
+ * `https://acyka.cc/.well-known/openid-configuration` says, which is where a
+ * client should really be reading them from; they are written down here so the
+ * common case is one round trip rather than two, and
+ * `.github/scripts/endpoints.ts` fails the day the document and these disagree.
+ */
 export type Endpoints = {
 	authorize: string;
 	token: string;
@@ -20,9 +31,9 @@ export type Endpoints = {
 };
 
 export const ACYKA: Endpoints = {
-	authorize: 'https://api.acyka.cc/api/oauth2/authorize',
-	token: 'https://api.acyka.cc/api/oauth2/token',
-	device: 'https://api.acyka.cc/api/oauth2/device_authorization'
+	authorize: 'https://acyka.cc/api/oauth2/authorize',
+	token: 'https://acyka.cc/api/oauth2/token',
+	device: 'https://acyka.cc/api/oauth2/device_authorization'
 };
 
 export type Tokens = {
