@@ -215,6 +215,12 @@ images:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     - if: $CI_PIPELINE_SOURCE == 'web'
   script:
+    # **Two directories, and they are not the same one.** `DOCKER_CONFIG` is per
+    # job so parallel pushes do not log each other out; `BUILDX_CONFIG` is where
+    # buildx writes down which builders exist, and it defaults to
+    # `$DOCKER_CONFIG/buildx` — so isolating the credential also hides every
+    # builder from the job that just made one.
+    - export BUILDX_CONFIG=/srv/ci-cache/buildx; mkdir -p "$BUILDX_CONFIG"
     - docker buildx inspect apidocs >/dev/null 2>&1 || docker buildx create --name apidocs --bootstrap
     # `DOCKER_AUTH_CONFIG` is how the runner pulled this job's image, and the
     # CLI prefers it over anything `docker login` writes — so left set, the push
@@ -229,6 +235,7 @@ images:
       --secret "id=kit_key,env=KIT_SSH_KEY"
       --cache-from "type=registry,ref=$DOCS_IMAGE:latest" .
   after_script:
+    - export BUILDX_CONFIG=/srv/ci-cache/buildx
     - docker buildx prune --force --max-used-space 6gb --builder apidocs || true
     - rm -rf "$CI_PROJECT_DIR/.docker"
 
