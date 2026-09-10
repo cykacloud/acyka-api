@@ -209,6 +209,10 @@ images:
     - if: $CI_PIPELINE_SOURCE == 'web'
   script:
     - docker buildx inspect apidocs >/dev/null 2>&1 || docker buildx create --name apidocs --bootstrap
+    # `DOCKER_AUTH_CONFIG` is how the runner pulled this job's image, and the
+    # CLI prefers it over anything `docker login` writes — so left set, the push
+    # goes out under the read-only pull token and fails `insufficient_scope`.
+    - unset DOCKER_AUTH_CONFIG
     - export DOCKER_CONFIG="$CI_PROJECT_DIR/.docker"; mkdir -p "$DOCKER_CONFIG"
     - echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
     - >
