@@ -1,0 +1,461 @@
+# dev.acyka.cc and the six libraries generated from one contract.
+#
+# On GitHub this was four workflows because four triggers. Here it is one file
+# and `rules`: a push checks, a tag publishes, a schedule asks the server what
+# shape it is in. What did not change is that the six languages are a mechanical
+# function of `openapi.json` — every job below is either checking that they
+# still are, or shipping them.
+
+stages:
+  - check
+  - build
+  - deploy
+  - publish
+
+variables:
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+  DOTNET_NOLOGO: '1'
+  DOCS_IMAGE: $CI_REGISTRY_IMAGE/docs
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == 'schedule'
+    - if: $CI_PIPELINE_SOURCE == 'web'
+
+default:
+  tags: [light]
+
+.not_a_tag: &not_a_tag
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never
+    - if: $CI_PIPELINE_SOURCE == 'schedule'
+      when: never
+    - when: on_success
+
+# ---------------------------------------------------------------------------
+# The contract, and the six that follow from it
+
+contract:
+  stage: check
+  <<: *not_a_tag
+  image: oven/bun:1.3-alpine
+  script:
+    - bun install --frozen-lockfile
+    # The libraries are committed, so this is "run the generator and see whether
+    # anything moved". A diff here is not a broken build — it is a contract and
+    # its clients that have stopped agreeing.
+    - |
+      bun run generate
+      if ! git diff --quiet; then
+        echo 'ERROR: `bun run generate` changed files. The committed clients disagree with openapi.json — run it and commit what it writes.' >&2
+        git --no-pager diff --stat
+        exit 1
+      fi
+    - bun test
+
+typescript:
+  stage: check
+  <<: *not_a_tag
+  image: oven/bun:1.3-alpine
+  script:
+    - bun install --frozen-lockfile
+    - bun --cwd packages/typescript run check
+    - bun --cwd packages/typescript run build
+
+python:
+  stage: check
+  <<: *not_a_tag
+  image: python:3.11-slim
+  script:
+    - python -m pip install --upgrade pip
+    - pip install httpx pytest ruff mypy hatchling
+    - cd packages/python
+    - python -m pytest tests -q
+    - ruff check .
+    - mypy src/acyka
+    - python -m hatchling build
+
+rust:
+  stage: check
+  <<: *not_a_tag
+  tags: [heavy]
+  image: $CI_REGISTRY/cykacloud/ci/base:latest
+  script:
+    - rustup component add clippy rustfmt
+    - cd packages/rust
+    - rustfmt --check --edition 2021 src/core.rs src/auth.rs src/error.rs src/webhooks.rs
+    - cargo clippy --all-targets -- -D warnings
+    - cargo test
+    - cargo check --no-default-features --features native-tls
+    # The floor the crate promises, checked against the compiler that is the
+    # floor. A `rust-version` nobody compiles with is a number in a manifest.
+    - rustup toolchain install 1.75.0 --profile minimal
+    - |
+      awk '/^\[dev-dependencies\]/{skip=1; next} /^\[/{skip=0} !skip' Cargo.toml > Cargo.toml.lib
+      mv Cargo.toml.lib Cargo.toml
+      CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS=fallback cargo +stable generate-lockfile
+      CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS=fallback cargo +1.75.0 check --locked --lib
+
+kotlin:
+  stage: check
+  <<: *not_a_tag
+  tags: [heavy]
+  image: $CI_REGISTRY/cykacloud/ci/android:latest
+  variables:
+    GRADLE_USER_HOME: /root/.gradle
+  script:
+    - cd packages/kotlin
+    - ./gradlew build --console=plain --no-daemon
+
+csharp:
+  stage: check
+  <<: *not_a_tag
+  image: mcr.microsoft.com/dotnet/sdk:10.0
+  script:
+    - dotnet test --nologo -v q packages/csharp/tests/Acyka.Tests
+    - dotnet pack packages/csharp/src/Acyka -c Release --nologo
+
+cpp:
+  stage: check
+  <<: *not_a_tag
+  tags: [heavy]
+  image: debian:trixie
+  script:
+    # What a header-only library still needs. It is header-only for whoever
+    # includes it; it is not header-only to build the tests.
+    - apt-get update -qq
+    - apt-get install -y --no-install-recommends cmake g++ clang libcurl4-openssl-dev nlohmann-json3-dev
+    - cd packages/cpp
+    - cmake -S . -B build/gcc -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++
+    - cmake --build build/gcc -j"$(nproc)"
+    - ctest --test-dir build/gcc --output-on-failure
+    - cmake -S . -B build/clang -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++
+    - cmake --build build/clang -j"$(nproc)"
+    - ctest --test-dir build/clang --output-on-failure
+    # And an install somebody else can find. A library that builds and cannot be
+    # located by `find_package` is a library nobody can use.
+    - |
+      cmake --install build/gcc --prefix /tmp/prefix
+      mkdir -p /tmp/consumer && cd /tmp/consumer
+      cat > CMakeLists.txt <<'CM'
+      cmake_minimum_required(VERSION 3.20)
+      project(consumer LANGUAGES CXX)
+      find_package(acyka REQUIRED)
+      add_executable(consumer main.cpp)
+      target_link_libraries(consumer PRIVATE acyka::acyka)
+      CM
+      printf '#include <acyka/acyka.hpp>\nint main() { return 0; }\n' > main.cpp
+      cmake -S . -B build -DCMAKE_PREFIX_PATH=/tmp/prefix
+      cmake --build build
+
+docs:
+  stage: check
+  <<: *not_a_tag
+  image: oven/bun:1.3-alpine
+  before_script:
+    - apk add --no-cache git openssh-client findutils
+  script:
+    - |
+      if [ -z "$KIT_SSH_KEY" ]; then
+        echo 'ERROR: KIT_SSH_KEY is not set, so the site cannot be built. Add a read-only deploy key for cykacloud/ui.' >&2
+        exit 1
+      fi
+      mkdir -p "$CI_PROJECT_DIR/.kit"
+      printf '%s\n' "$KIT_SSH_KEY" > "$CI_PROJECT_DIR/.kit/key"
+      chmod 600 "$CI_PROJECT_DIR/.kit/key"
+      echo 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl' > "$CI_PROJECT_DIR/.kit/known_hosts"
+      export GIT_SSH_COMMAND="ssh -i $CI_PROJECT_DIR/.kit/key -o IdentitiesOnly=yes -o BatchMode=yes -o UserKnownHostsFile=$CI_PROJECT_DIR/.kit/known_hosts"
+    - cd apps/docs
+    - bun install --frozen-lockfile
+    - bun run check
+    - bun run build
+    # **The contract has not got into the browser.** Every loader is
+    # `+page.server.ts` and the reader stays under `$lib/server`; the failure
+    # this catches is a component importing `$contract` or shiki, which does not
+    # break anything — it just ships the whole document to every visitor.
+    - |
+      js=$(find .svelte-kit/output/client -name '*.js' -printf '%s\n' | awk '{n+=$1} END {print n+0}')
+      echo "client javascript: $js bytes"
+      if [ "$js" -gt 1000000 ]; then
+        echo "ERROR: the client bundle is ${js} bytes. Something is importing \$contract or shiki from a component — every loader must be +page.server.ts and the reader must stay under \$lib/server." >&2
+        find .svelte-kit/output/client -name '*.js' -printf '%s\t%p\n' | sort -rn | head -5
+        exit 1
+      fi
+      if grep -rqs 'createHighlighter\|bundledLanguages' .svelte-kit/output/client; then
+        echo 'ERROR: shiki is in the client bundle. Colouring happens in a server loader.' >&2
+        exit 1
+      fi
+  after_script:
+    - rm -rf "$CI_PROJECT_DIR/.kit"
+
+# ---------------------------------------------------------------------------
+# dev.acyka.cc
+
+# `image` is a reserved word at the top level, so the job that builds one
+# cannot be called that — GitLab reads it as the global image config and says
+# "image name can't be blank", which points at nothing.
+images:
+  stage: build
+  tags: [heavy]
+  image: $CI_REGISTRY/cykacloud/ci/base:latest
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == 'web'
+  script:
+    - docker buildx inspect apidocs >/dev/null 2>&1 || docker buildx create --name apidocs --bootstrap
+    - export DOCKER_CONFIG="$CI_PROJECT_DIR/.docker"; mkdir -p "$DOCKER_CONFIG"
+    - echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
+    - >
+      docker buildx build --builder apidocs --push --provenance=false
+      --file apps/docs/Dockerfile
+      --tag "$DOCS_IMAGE:latest" --tag "$DOCS_IMAGE:$CI_COMMIT_SHA"
+      --secret "id=kit_key,env=KIT_SSH_KEY"
+      --cache-from "type=registry,ref=$DOCS_IMAGE:latest" .
+  after_script:
+    - docker buildx prune --force --max-used-space 6gb --builder apidocs || true
+    - rm -rf "$CI_PROJECT_DIR/.docker"
+
+deploy:
+  stage: deploy
+  tags: [heavy]
+  image: $CI_REGISTRY/cykacloud/ci/base:latest
+  needs: [images]
+  resource_group: deploy
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == 'web'
+  environment:
+    name: dev
+    url: https://dev.acyka.cc
+  script:
+    # Three things this needs and cannot invent. Without them the image is
+    # built and pushed and nothing told the server to pull it — a green
+    # pipeline in front of an unchanged site.
+    - |
+      missing=''
+      [ -n "$SSH_HOST" ] || missing="$missing SSH_HOST"
+      [ -n "$SSH_USER" ] || missing="$missing SSH_USER"
+      [ -n "$SSH_KEY"  ] || missing="$missing SSH_KEY"
+      if [ -n "$missing" ]; then
+        echo "ERROR: not set on this project:$missing — they are the same three values cykacloud/acyka deploys with, and they are group variables now." >&2
+        exit 1
+      fi
+    - mkdir -p ~/.ssh && chmod 700 ~/.ssh
+    - printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519
+    - |
+      for i in 1 2 3; do
+        ssh-keyscan -T 20 -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null && [ -s ~/.ssh/known_hosts ] && break
+        echo "keyscan attempt $i found nothing, trying again"; sleep 6
+        [ "$i" = 3 ] && { echo "could not read the host key after three tries" >&2; exit 1; }
+      done
+    - echo "$REGISTRY_PULL_TOKEN" | ssh "$SSH_USER@$SSH_HOST" "docker login $CI_REGISTRY -u $REGISTRY_PULL_USER --password-stdin"
+    # The docs run inside the site's own stack, behind its profile, so this
+    # names the one service and touches nothing else.
+    - |
+      ssh -o ServerAliveInterval=10 "$SSH_USER@$SSH_HOST" "cd /opt/acyka \
+        && export DOCS_IMAGE='$DOCS_IMAGE:$CI_COMMIT_SHA' \
+        && docker compose --profile docs pull docs \
+        && docker compose --profile docs up -d --no-build docs \
+        && docker image prune -f"
+    - |
+      ok=""
+      for i in $(seq 1 30); do
+        code=$(curl -s --max-time 25 -o /dev/null -w '%{http_code}' https://dev.acyka.cc/ || true)
+        if [ "$code" = "200" ]; then echo "healthy after ${i}0s"; ok=1; break; fi
+        sleep 10
+      done
+      [ -n "$ok" ] || { echo "still not healthy" >&2; exit 1; }
+  after_script:
+    - ssh "$SSH_USER@$SSH_HOST" "docker logout $CI_REGISTRY" || true
+
+# ---------------------------------------------------------------------------
+# The six, on a tag
+#
+# **Nothing here runs on a push.** The six versions have to be bumped together
+# before a tag exists, and a registry cannot take a version back — so a partial
+# publish is fixed with a patch version rather than a re-run, which `said` at
+# the bottom says out loud.
+
+agreed:
+  stage: publish
+  image: oven/bun:1.3-alpine
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v/
+  script:
+    - export VERSION="${CI_COMMIT_TAG#v}"
+    - echo "PUBLISH_VERSION=$VERSION" >> publish.env
+    - echo "publishing $VERSION"
+    - bun ./.gitlab/scripts/versions.ts "$VERSION"
+    - bun install --frozen-lockfile
+    # A tag is generated code, not hand-edited code. If the committed clients
+    # disagree with the contract at this tag, publishing them would ship six
+    # libraries that describe a server that does not exist.
+    - |
+      bun run generate
+      if ! git diff --quiet; then
+        echo 'ERROR: the committed clients disagree with openapi.json at this tag. Do not publish this.' >&2
+        git --no-pager diff --stat
+        exit 1
+      fi
+  artifacts:
+    reports:
+      dotenv: publish.env
+
+.on_a_tag: &on_a_tag
+  stage: publish
+  needs: [agreed]
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v/
+
+npm:
+  <<: *on_a_tag
+  image: node:22-alpine
+  script:
+    - npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN"
+    - cd packages/typescript && npm publish --access public
+
+pypi:
+  <<: *on_a_tag
+  image: python:3.12-slim
+  variables:
+    TWINE_USERNAME: __token__
+  script:
+    - pip install hatchling twine
+    - cd packages/python
+    - python -m hatchling build
+    - twine check dist/*
+    - TWINE_PASSWORD="$PYPI_TOKEN" twine upload dist/*
+
+crates:
+  <<: *on_a_tag
+  tags: [heavy]
+  image: $CI_REGISTRY/cykacloud/ci/base:latest
+  script:
+    - cd packages/rust
+    - cargo publish --locked --dry-run
+    - CARGO_REGISTRY_TOKEN="$CARGO_REGISTRY_TOKEN" cargo publish --locked
+
+maven:
+  <<: *on_a_tag
+  tags: [heavy]
+  image: $CI_REGISTRY/cykacloud/ci/android:latest
+  script:
+    - |
+      if [ -z "$MAVEN_GPG_KEY" ] || [ -z "$MAVEN_GPG_PASSWORD" ]; then
+        echo 'ERROR: Maven Central will not take an unsigned artefact. MAVEN_GPG_KEY and MAVEN_GPG_PASSWORD are both needed.' >&2
+        exit 1
+      fi
+    - cd packages/kotlin
+    - ./gradlew publish --console=plain --no-daemon
+
+nuget:
+  <<: *on_a_tag
+  image: mcr.microsoft.com/dotnet/sdk:10.0
+  script:
+    - cd packages/csharp
+    - dotnet pack src/Acyka -c Release --nologo -o out
+    - dotnet nuget push 'out/*.nupkg' --source https://api.nuget.org/v3/index.json --api-key "$NUGET_API_KEY" --skip-duplicate
+
+# C++ is header-only, so there is no registry to push to — the release *is* the
+# distribution, and the checksum beside it is what somebody verifies.
+headers:
+  <<: *on_a_tag
+  image: $CI_REGISTRY/cykacloud/ci/light:latest
+  script:
+    - tar czf "acyka-cpp-$PUBLISH_VERSION.tar.gz" -C packages/cpp include CMakeLists.txt README.md
+    - sha256sum "acyka-cpp-$PUBLISH_VERSION.tar.gz" | tee "acyka-cpp-$PUBLISH_VERSION.tar.gz.sha256"
+    - |
+      glab release create "$CI_COMMIT_TAG" \
+        "acyka-cpp-$PUBLISH_VERSION.tar.gz" "acyka-cpp-$PUBLISH_VERSION.tar.gz.sha256" \
+        --name "acyka $PUBLISH_VERSION" --notes "The six libraries at $PUBLISH_VERSION."
+  artifacts:
+    paths:
+      - acyka-cpp-*.tar.gz
+      - acyka-cpp-*.tar.gz.sha256
+
+# Who went out, and whether all six did.
+#
+# **A partial publish is a failure and says why.** The versions are already
+# taken where they succeeded, so the fix is a patch version rather than a
+# re-run — which is the one thing somebody reading a red tick here needs told.
+said:
+  stage: publish
+  image: $CI_REGISTRY/cykacloud/ci/light:latest
+  needs: [agreed, npm, pypi, crates, maven, nuget, headers]
+  when: always
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v/
+  script:
+    - |
+      fell=$(curl -sf -H "PRIVATE-TOKEN: $GITLAB_API_TOKEN" \
+        "$CI_API_V4_URL/projects/$CI_PROJECT_ID/pipelines/$CI_PIPELINE_ID/jobs?per_page=100" \
+        | grep -o '"status":"failed"' | wc -l)
+      echo "acyka $PUBLISH_VERSION"
+      if [ "$fell" -gt 0 ]; then
+        echo "ERROR: $fell of the six did not publish. The versions are already taken where they succeeded, so the fix is a patch version rather than a re-run." >&2
+        exit 1
+      fi
+      echo "all six went out"
+
+# ---------------------------------------------------------------------------
+# What the server says it is, once a day
+#
+# Set off by a pipeline schedule with SCHEDULE=contract.
+
+contract-refresh:
+  stage: check
+  image: $CI_REGISTRY/cykacloud/ci/light:latest
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'schedule' && $SCHEDULE == 'contract'
+  script:
+    - bun install --frozen-lockfile
+    # **Refusing to overwrite the document with a bad answer is the point.** A
+    # server having an afternoon returns something; a document with four paths
+    # in it would regenerate all six libraries into nothing.
+    - |
+      curl -fsS --max-time 30 https://api.acyka.cc/api/v1/openapi.json > /tmp/spec.json
+      paths=$(bun -e 'const d = await Bun.file("/tmp/spec.json").json(); console.log(Object.keys(d.paths ?? {}).length)')
+      echo "the server describes $paths paths"
+      if [ "$paths" -lt 30 ]; then
+        echo "ERROR: only $paths paths came back. That is not the document — refusing to overwrite openapi.json with it." >&2
+        head -c 400 /tmp/spec.json
+        exit 1
+      fi
+      cp /tmp/spec.json openapi.json
+      [ -n "$(tail -c1 openapi.json)" ] && printf '\n' >> openapi.json
+      true
+    - bun ./.gitlab/scripts/endpoints.ts
+    - |
+      bun run generate
+      if git diff --quiet; then
+        echo 'nothing changed'
+        exit 0
+      fi
+      git --no-pager diff --stat
+      # Whether the generator could absorb it on its own. A failure here is the
+      # interesting case rather than a reason not to propose the change.
+      builds=ok
+      bun --cwd packages/typescript run check && bun test || builds=failed
+      git config user.email "no-reply@cyka.cloud"
+      git config user.name "cykacloud"
+      git checkout -B contract/refresh
+      git add -A
+      git commit -q -m "chore: the contract moved
+
+      \`openapi.json\` read from the live server, and the six libraries
+      regenerated from it. Everything below the contract in this diff is
+      \`bun run generate\` output — the thing to review is the top of it."
+      git push -f "https://oauth2:${GITLAB_PUSH_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git" contract/refresh
+      glab mr create --source-branch contract/refresh --target-branch "$CI_DEFAULT_BRANCH" \
+        --title "chore: the contract moved" --label contract --yes \
+        --description "The api is answering a different document than the one committed here. \`openapi.json\` is what the live server returned, and everything else in this diff is what \`bun run generate\` wrote from it. The contract is the part to read; the six languages are a mechanical function of it.
+
+      **TypeScript check and the reader's own tests: \`$builds\`.** A failure there is the interesting case rather than a reason to close this — it means the change is one the generator cannot absorb on its own.
+
+      Nothing here is published. The publish stage runs on a tag, and the six versions have to be bumped together before one exists." || echo "a merge request is already open"
