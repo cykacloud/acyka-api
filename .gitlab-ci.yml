@@ -44,7 +44,11 @@ default:
 contract:
   stage: check
   <<: *not_a_tag
-  image: oven/bun:1.3-alpine
+  # `git diff` is how this asks whether the generator moved anything, and
+  # `oven/bun:1.3-alpine` has no git in it — the check then fails as
+  # `git: not found` under a message about the clients disagreeing, which is
+  # the wrong thing to go and look at.
+  image: $CI_REGISTRY/cykacloud/ci/light:latest
   script:
     - bun install --frozen-lockfile
     # The libraries are committed, so this is "run the generator and see whether
@@ -130,7 +134,10 @@ cpp:
     # What a header-only library still needs. It is header-only for whoever
     # includes it; it is not header-only to build the tests.
     - apt-get update -qq
-    - apt-get install -y --no-install-recommends cmake g++ clang libcurl4-openssl-dev nlohmann-json3-dev
+    # `make` is not implied by `cmake`: without it the configure step stops at
+    # "unable to find a build program corresponding to Unix Makefiles", which
+    # reads as a broken CMakeLists rather than a missing package.
+    - apt-get install -y --no-install-recommends cmake make g++ clang libcurl4-openssl-dev nlohmann-json3-dev
     - cd packages/cpp
     - cmake -S . -B build/gcc -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++
     - cmake --build build/gcc -j"$(nproc)"
