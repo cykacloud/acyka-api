@@ -4,7 +4,7 @@ The API, its documentation, and client libraries for six languages.
 
 Everything here is generated from or written against one file: **`openapi.json`**,
 which comes out of the server itself. `acyka-api spec` in
-[`cykacloud/acyka`](https://github.com/cykacloud/acyka) writes it from
+[`acyka/acyka`](https://github.com/cykacloud/acyka) writes it from
 annotations that sit on the handlers, and a test there drives every path in it
 against the real router — so a route that changes shape changes this file in the
 same commit, and a path that does not exist cannot be described.
@@ -90,9 +90,9 @@ its own language wants:
 | cpp | cmake, a C++17 compiler, libcurl |
 
 **Two lockfiles, on purpose.** `apps/docs` is deliberately *not* a member of the
-root workspace: it is the one thing here that depends on `@cyka/ui`, which is the
-**private** `cykacloud/ui`, and a workspace member's dependency is everybody's
-`bun install`. Split out, the six libraries install and test for anybody —
+root workspace: it is the one thing here that depends on `@cyka/ui`, which is a
+**private package** in the group's registry, and a workspace member's dependency
+is everybody's `bun install`. Split out, the six libraries install and test for anybody —
 including somebody outside the org sending a patch to the Python client, which is
 most of the reason to publish source at all.
 
@@ -135,7 +135,7 @@ and every control.
 | `publish.yml` | a `v*` tag | npm, PyPI, crates.io, Maven Central, NuGet, and a tarball of the C++ headers |
 
 These run on GitHub's own runners, which is the opposite of the answer
-`cykacloud/acyka` reached — and for two reasons. Its three self-hosted runners
+`acyka/acyka` reached — and for two reasons. Its three self-hosted runners
 are registered to *that* repository rather than to the organisation, so a job
 here queues for a machine that will never take it; and the hosted image already
 carries every toolchain this needs, while the warm cargo `target/` that makes
@@ -150,8 +150,8 @@ that quietly did nothing:
 
 | secret | wanted by |
 |---|---|
-| `KIT_SSH_KEY` | `check.yml` (the site), `deploy.yml` — a read-only deploy key on `cykacloud/ui` |
-| `SSH_HOST`, `SSH_USER`, `SSH_KEY` | `deploy.yml` — the same three `cykacloud/acyka` deploys with |
+| `CYKA_NPM_TOKEN` | the `docs` job and the image build — the group's `npm read` deploy token, which is how `@cyka/ui` is installed |
+| `SSH_HOST`, `SSH_USER`, `SSH_KEY` | `deploy.yml` — the same three `acyka/acyka` deploys with |
 | `NPM_TOKEN` | `publish.yml` |
 | `PYPI_TOKEN` | `publish.yml` |
 | `CARGO_REGISTRY_TOKEN` | `publish.yml` |
