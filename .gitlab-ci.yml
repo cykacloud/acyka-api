@@ -431,7 +431,34 @@ contract-refresh:
   image: $CI_REGISTRY/cykacloud/ci/light:latest
   rules:
     - if: $CI_PIPELINE_SOURCE == 'schedule' && $SCHEDULE == 'contract'
+  # **`glab` only knows gitlab.com until it is told otherwise.** It works out
+  # which GitLab it is talking to by reading the git remote, and a self-managed
+  # one is not on that list: `None of the git remotes configured for this
+  # repository point to a known GitLab host`. The merge request at the end of
+  # this job stopped there, after the document had been fetched and all six
+  # libraries regenerated.
+  variables:
+    GITLAB_HOST: $CI_SERVER_HOST
+    GITLAB_TOKEN: $GITLAB_API_TOKEN
   script:
+    # **This job pushes, and a job token cannot.** `GITLAB_PUSH_TOKEN` is a name
+    # nothing sets — not in this project's variables and not in the group's — so
+    # the push went out as `oauth2:` with an empty password and came back
+    # `HTTP Basic: Access denied`, with the document fetched, the six libraries
+    # regenerated and the whole point of the run on the floor.
+    #
+    # The credential is handed over by a helper rather than written into the url,
+    # which is the same decision `claude.yml` in the site's repository makes: a
+    # url with a token in it ends up in `git remote -v`, in `.git/config` and in
+    # the output of whatever runs next. It is masked in the log either way; a
+    # masked secret in three more places is still three more places.
+    - |
+      if [ -z "$GITLAB_API_TOKEN" ]; then
+        echo 'ERROR: GITLAB_API_TOKEN is not set, so this job can regenerate the six libraries and push none of them. It is a protected variable and this is a schedule on main, so if it is empty here the variable is missing rather than out of reach.' >&2
+        exit 1
+      fi
+      git remote set-url --push origin "https://$CI_SERVER_HOST/$CI_PROJECT_PATH.git"
+      git config credential.helper '!f() { echo username=oauth2; echo password=$GITLAB_API_TOKEN; }; f'
     - bun install --frozen-lockfile
     # **Refusing to overwrite the document with a bad answer is the point.** A
     # server having an afternoon returns something; a document with four paths
@@ -469,7 +496,7 @@ contract-refresh:
       \`openapi.json\` read from the live server, and the six libraries
       regenerated from it. Everything below the contract in this diff is
       \`bun run generate\` output — the thing to review is the top of it."
-      git push -f "https://oauth2:${GITLAB_PUSH_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git" contract/refresh
+      git push -f origin contract/refresh
       glab mr create --source-branch contract/refresh --target-branch "$CI_DEFAULT_BRANCH" \
         --title "chore: the contract moved" --label contract --yes \
         --description "The api is answering a different document than the one committed here. \`openapi.json\` is what the live server returned, and everything else in this diff is what \`bun run generate\` wrote from it. The contract is the part to read; the six languages are a mechanical function of it.
