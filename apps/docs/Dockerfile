@@ -9,10 +9,6 @@
 FROM oven/bun:1.3-alpine AS build
 WORKDIR /app/apps/docs
 
-# `@cyka/ui` is `cykacloud/ui` and it is private, so the install fetches a
-# repository rather than reading a folder — which needs git and a key.
-RUN apk add --no-cache git openssh-client
-
 # This directory's own manifests, and nothing from the root.
 #
 # `apps/docs` is deliberately *not* a member of the root workspace — it is the
@@ -21,33 +17,22 @@ RUN apk add --no-cache git openssh-client
 # used to copy the root's: `bun install --frozen-lockfile` then found a lockfile
 # that knew nothing about any of these dependencies and refused with "lockfile
 # had changes, but lockfile is frozen".
-COPY apps/docs/package.json apps/docs/bun.lock ./
+COPY apps/docs/package.json apps/docs/bun.lock apps/docs/.npmrc ./
 
-# A read-only deploy key on that one repository, mounted rather than passed: a
-# `--build-arg` is in the image history and in a layer, readable by anybody who
-# pulls the image, and a secret mount is in neither. The newline is put back on
-# because a secret handed through the environment arrives with it stripped, and
-# OpenSSH answers a key without one with `invalid format` and nothing else —
-# which reads exactly like a key that was never authorised.
+# `@cyka/ui` is a private package in the group's registry, and `.npmrc` above
+# says where and under which variable the token is. The token is a mounted
+# secret rather than a `--build-arg`: an argument is in the image history and in
+# a layer, readable by anybody who pulls the image, and a mount is in neither.
 #
-# GitHub's host key is written out rather than scanned: `ssh-keyscan` would
-# trust whatever answered during the build, and what this fetches is source that
-# then gets compiled.
-#
-# It fails *open* when nothing is mounted, so a laptop whose own key GitHub
-# knows reaches the same repository and needs none of this.
-RUN --mount=type=secret,id=kit_key \
+# It fails *open* when nothing is mounted, so a shell that already exports the
+# variable builds the same image.
+RUN --mount=type=secret,id=npm_token \
     sh -euc '\
-      if [ -s /run/secrets/kit_key ]; then \
-        mkdir -p /root/.ssh; \
-        echo "[lab.cyka.cloud]:2222 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIILhRuLCfKnM/UM2r4S1h5t/svq8R/do5+zxzocJUU1r" > /root/.ssh/known_hosts; \
-        cp /run/secrets/kit_key /tmp/kit_key; \
-        printf "\n" >> /tmp/kit_key; \
-        chmod 600 /tmp/kit_key; \
-        export GIT_SSH_COMMAND="ssh -p 2222 -i /tmp/kit_key -o IdentitiesOnly=yes -o BatchMode=yes -o UserKnownHostsFile=/root/.ssh/known_hosts"; \
+      if [ -s /run/secrets/npm_token ]; then \
+        CYKA_NPM_TOKEN="$(cat /run/secrets/npm_token)"; \
+        export CYKA_NPM_TOKEN; \
       fi; \
-      bun install --frozen-lockfile; \
-      rm -f /tmp/kit_key'
+      bun install --frozen-lockfile'
 
 # The contract and the reader, at the paths the two aliases expect, then the
 # site itself. `node_modules` is not overwritten: `COPY` merges, and

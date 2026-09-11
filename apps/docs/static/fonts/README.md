@@ -8,5 +8,5 @@ whatever the system has, and looks almost right in a way nobody reports.
 They are copied rather than fetched, because a documentation site that cannot be
 built without reaching a private repository at build time is a documentation site
 that stops building the day that repository moves. The same files are in
-`apps/web/static/fonts` in `cykacloud/acyka`; if the kit changes a face, both
+`apps/web/static/fonts` in `acyka/acyka`; if the kit changes a face, both
 copies move together.
