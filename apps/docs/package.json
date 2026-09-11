@@ -21,7 +21,7 @@
     "vite": "^7.1.9"
   },
   "dependencies": {
-    "@cyka/ui": "git+ssh://git@github.com/cykacloud/ui.git#v0.7.1",
+    "@cyka/ui": "git+ssh://git@lab.cyka.cloud/cykacloud/ui.git#v0.7.1",
     "@tabler/icons-svelte": "^3.46.0",
     "bits-ui": "^2.18.1",
     "shiki": "^1.24.0"

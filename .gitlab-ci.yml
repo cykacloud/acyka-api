@@ -170,14 +170,14 @@ docs:
   script:
     - |
       if [ -z "$KIT_SSH_KEY" ]; then
-        echo 'ERROR: KIT_SSH_KEY is not set, so the site cannot be built. Add a read-only deploy key for cykacloud/ui.' >&2
+        echo 'ERROR: KIT_SSH_KEY is not set, so the site cannot be built. It is a read-only deploy key on cykacloud/ui at lab.cyka.cloud, as a group variable.' >&2
         exit 1
       fi
       mkdir -p "$CI_PROJECT_DIR/.kit"
       printf '%s\n' "$KIT_SSH_KEY" > "$CI_PROJECT_DIR/.kit/key"
       chmod 600 "$CI_PROJECT_DIR/.kit/key"
-      echo 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl' > "$CI_PROJECT_DIR/.kit/known_hosts"
-      export GIT_SSH_COMMAND="ssh -i $CI_PROJECT_DIR/.kit/key -o IdentitiesOnly=yes -o BatchMode=yes -o UserKnownHostsFile=$CI_PROJECT_DIR/.kit/known_hosts"
+      echo '[lab.cyka.cloud]:2222 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIILhRuLCfKnM/UM2r4S1h5t/svq8R/do5+zxzocJUU1r' > "$CI_PROJECT_DIR/.kit/known_hosts"
+      export GIT_SSH_COMMAND="ssh -p 2222 -i $CI_PROJECT_DIR/.kit/key -o IdentitiesOnly=yes -o BatchMode=yes -o UserKnownHostsFile=$CI_PROJECT_DIR/.kit/known_hosts"
     - cd apps/docs
     - bun install --frozen-lockfile
     - bun run check

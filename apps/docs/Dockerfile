@@ -40,11 +40,11 @@ RUN --mount=type=secret,id=kit_key \
     sh -euc '\
       if [ -s /run/secrets/kit_key ]; then \
         mkdir -p /root/.ssh; \
-        echo "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl" > /root/.ssh/known_hosts; \
+        echo "[lab.cyka.cloud]:2222 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIILhRuLCfKnM/UM2r4S1h5t/svq8R/do5+zxzocJUU1r" > /root/.ssh/known_hosts; \
         cp /run/secrets/kit_key /tmp/kit_key; \
         printf "\n" >> /tmp/kit_key; \
         chmod 600 /tmp/kit_key; \
-        export GIT_SSH_COMMAND="ssh -i /tmp/kit_key -o IdentitiesOnly=yes -o BatchMode=yes -o UserKnownHostsFile=/root/.ssh/known_hosts"; \
+        export GIT_SSH_COMMAND="ssh -p 2222 -i /tmp/kit_key -o IdentitiesOnly=yes -o BatchMode=yes -o UserKnownHostsFile=/root/.ssh/known_hosts"; \
       fi; \
       bun install --frozen-lockfile; \
       rm -f /tmp/kit_key'
