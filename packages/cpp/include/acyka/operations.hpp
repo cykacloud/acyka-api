@@ -87,7 +87,8 @@ struct ListTitlesRequest {
     std::optional<std::int64_t> offset;
     /// what to search for
     std::optional<std::string> q;
-    /// `ranked` by score, `aired_on` by year; by how watched it is otherwise
+    /// `ranked` by score, `aired_on` by year, `trending` by what is being watched
+    /// right now; by how watched it is overall otherwise
     std::optional<std::string> order;
     /// `ongoing` | `released` | `announced`
     std::optional<std::string> status;
