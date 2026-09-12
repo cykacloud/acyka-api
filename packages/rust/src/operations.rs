@@ -397,7 +397,8 @@ impl<'a> ListTitles<'a> {
         self
     }
 
-    /// `ranked` by score, `aired_on` by year; by how watched it is otherwise
+    /// `ranked` by score, `aired_on` by year, `trending` by what is being watched
+    /// right now; by how watched it is overall otherwise
     pub fn order(mut self, value: impl Into<String>) -> Self {
         self.order = Some(value.into());
         self

@@ -262,7 +262,7 @@ export class Catalogue {
 		offset?: number;
 		/** what to search for */
 		q?: string;
-		/** `ranked` by score, `aired_on` by year; by how watched it is otherwise */
+		/** `ranked` by score, `aired_on` by year, `trending` by what is being watched right now; by how watched it is overall otherwise */
 		order?: string;
 		/** `ongoing` | `released` | `announced` */
 		status?: string;
@@ -301,7 +301,7 @@ export class Catalogue {
 		offset?: number;
 		/** what to search for */
 		q?: string;
-		/** `ranked` by score, `aired_on` by year; by how watched it is otherwise */
+		/** `ranked` by score, `aired_on` by year, `trending` by what is being watched right now; by how watched it is overall otherwise */
 		order?: string;
 		/** `ongoing` | `released` | `announced` */
 		status?: string;

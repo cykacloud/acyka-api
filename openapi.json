@@ -2211,7 +2211,7 @@
           {
             "name": "order",
             "in": "query",
-            "description": "`ranked` by score, `aired_on` by year; by how watched it is otherwise",
+            "description": "`ranked` by score, `aired_on` by year, `trending` by what is being watched right now; by how watched it is overall otherwise",
             "required": false,
             "schema": {
               "type": "string"
