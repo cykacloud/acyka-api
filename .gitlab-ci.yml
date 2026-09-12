@@ -453,15 +453,6 @@ contract-refresh:
         exit 1
       fi
       git remote set-url --push origin "https://$CI_SERVER_HOST/$CI_PROJECT_PATH.git"
-      git config credential.helper '!f() { echo username=oauth2; echo password=$GITLAB_API_TOKEN; }; f'
-      # **And the header the runner put there first.** Every job starts with
-      # `http.<server>.extraheader` set to the job token so the clone works, and
-      # a header outranks a credential helper — so the push authenticated as the
-      # job rather than as the token above and came back `You are not allowed to
-      # push code to this project`, which reads as a permission problem with the
-      # token and is not one. The same token pushes fine from a laptop.
-      git config --unset-all "http.${CI_SERVER_URL}.extraheader" || true
-      git config --unset-all "http.https://$CI_SERVER_HOST/.extraheader" || true
     - bun install --frozen-lockfile
     # **Refusing to overwrite the document with a bad answer is the point.** A
     # server having an afternoon returns something; a document with four paths
@@ -499,7 +490,15 @@ contract-refresh:
       \`openapi.json\` read from the live server, and the six libraries
       regenerated from it. Everything below the contract in this diff is
       \`bun run generate\` output — the thing to review is the top of it."
-      git push -f origin contract/refresh
+      # **The credential goes on the push itself and nowhere else.** A helper
+      # here was never consulted: the runner has already authenticated this
+      # working copy as the job, and a job token may not push — `You are not
+      # allowed to push code to this project`, which reads as the token above
+      # lacking rights and is not that at all (the same token pushes this branch
+      # from a laptop). An argument keeps it out of `.git/config` and out of
+      # `git remote -v`, which is what the helper was for; the platform masks it
+      # in the log.
+      git push -f "https://oauth2:${GITLAB_API_TOKEN}@$CI_SERVER_HOST/$CI_PROJECT_PATH.git" contract/refresh
       glab mr create --source-branch contract/refresh --target-branch "$CI_DEFAULT_BRANCH" \
         --title "chore: the contract moved" --label contract --yes \
         --description "The api is answering a different document than the one committed here. \`openapi.json\` is what the live server returned, and everything else in this diff is what \`bun run generate\` wrote from it. The contract is the part to read; the six languages are a mechanical function of it.
