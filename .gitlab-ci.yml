@@ -454,6 +454,14 @@ contract-refresh:
       fi
       git remote set-url --push origin "https://$CI_SERVER_HOST/$CI_PROJECT_PATH.git"
       git config credential.helper '!f() { echo username=oauth2; echo password=$GITLAB_API_TOKEN; }; f'
+      # **And the header the runner put there first.** Every job starts with
+      # `http.<server>.extraheader` set to the job token so the clone works, and
+      # a header outranks a credential helper — so the push authenticated as the
+      # job rather than as the token above and came back `You are not allowed to
+      # push code to this project`, which reads as a permission problem with the
+      # token and is not one. The same token pushes fine from a laptop.
+      git config --unset-all "http.${CI_SERVER_URL}.extraheader" || true
+      git config --unset-all "http.https://$CI_SERVER_HOST/.extraheader" || true
     - bun install --frozen-lockfile
     # **Refusing to overwrite the document with a bad answer is the point.** A
     # server having an afternoon returns something; a document with four paths
